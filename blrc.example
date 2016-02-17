@@ -1,0 +1,8 @@
+# EXAMPLE OF CONFIGURATION FILE FOR BICYCLE LOG
+
+# DATA_FILE sets the default path to the file with data.
+# It will be used if you don't use the -f file option when running the program.
+DATA_FILE = /home/user/bldata
+
+# VERBOSE sets the default verbose mode.
+VERBOSE = true

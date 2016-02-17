@@ -4,7 +4,7 @@
 //
 // TASKS:
 //DONE: create scheme of DB
-//TODO: config - data file name
+//DONE: config - data file name
 //TODO: command - init data file
 //TODO: checking if given file is a appropriate biclog file
 //TODO: command - type add
@@ -38,6 +38,13 @@ import (
 	"github.com/zbroju/gprops"
 	"os"
 	"path"
+	"strconv"
+)
+
+// Config settings
+const (
+	CONF_DATAFILE = "DATA_FILE"
+	CONF_VERBOSE  = "VERBOSE"
 )
 
 func main() {
@@ -66,5 +73,10 @@ SUBCOMMANDS:
 		}
 	}
 	configFile.Close()
+	dataFile := configSettings.GetOrDefault(CONF_DATAFILE, "")
+	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(CONF_VERBOSE, "false"))
+	if err != nil {
+		verbose = false
+	}
 
 }
