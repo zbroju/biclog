@@ -1,11 +1,11 @@
-// Written 2015 by Marcin 'Zbroju' Zbroinski.
+// Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
 //
 // TASKS:
 //DONE: create scheme of DB
 //DONE: config - data file name
-//TODO: command - init data file
+//DONE: command - init data file
 //TODO: checking if given file is a appropriate biclog file
 //TODO: command - type add
 //TODO: command - type list
@@ -41,6 +41,11 @@ import (
 	"strconv"
 )
 
+// Error messages
+const (
+	ERR_MISSING_FILE_FLAG = "gBicLog: missing information about data file. Specify it with --file or -f flag.\n"
+)
+
 // Config settings
 const (
 	CONF_DATAFILE = "DATA_FILE"
@@ -49,18 +54,18 @@ const (
 
 func main() {
 	cli.CommandHelpTemplate = `NAME:
-   {{.HelpName}} - {{.Usage}}
-USAGE:
-   {{.HelpName}}{{if .Subcommands}} [subcommand]{{end}}{{if .Flags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{if .Description}}
-DESCRIPTION:
-   {{.Description}}{{end}}{{if .Flags}}
-OPTIONS:
-   {{range .Flags}}{{.}}
-   {{end}}{{ end }}{{if .Subcommands}}
-SUBCOMMANDS:
-    {{range .Subcommands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
-{{end}}{{ end }}
-`
+	   {{.HelpName}} - {{.Usage}}
+	USAGE:
+	   {{.HelpName}}{{if .Subcommands}} [subcommand]{{end}}{{if .Flags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{if .Description}}
+	DESCRIPTION:
+	   {{.Description}}{{end}}{{if .Flags}}
+	OPTIONS:
+	   {{range .Flags}}{{.}}
+	   {{end}}{{ end }}{{if .Subcommands}}
+	SUBCOMMANDS:
+	    {{range .Subcommands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
+	{{end}}{{ end }}
+	`
 
 	// Loading properties from config file if exists
 	configSettings := gprops.New()
@@ -79,4 +84,56 @@ SUBCOMMANDS:
 		verbose = false
 	}
 
+	// Commandline arguments
+	app := cli.NewApp()
+	app.Name = "gBicLog"
+	app.Usage = "keeps track of you bike rides"
+	app.Version = "0.1 Alfa"
+	app.Authors = []cli.Author{
+		cli.Author{"Marcin 'Zbroju' Zbroinski", "marcin@zbroinski.net"},
+	}
+
+	// Flags definitions
+	flagVerbose := cli.BoolFlag{
+		Name:        "verbose, b",
+		Usage:       "show more output",
+		Destination: &verbose,
+	}
+	flagFile := cli.StringFlag{
+		Name:  "file, f",
+		Value: dataFile,
+		Usage: "data file",
+	}
+
+	// Commands
+	app.Commands = []cli.Command{
+		{
+			Name:    "init",
+			Aliases: []string{"I"},
+			Flags:   []cli.Flag{flagVerbose, flagFile},
+			Usage:   "Init a new data file specified by the user",
+			Action:  cmdInit,
+		},
+	}
+	app.Run(os.Args)
+}
+
+func cmdInit(c *cli.Context) {
+	// Check the obligatory parameters and exit if missing
+	if c.String("file") == "" {
+		fmt.Fprint(os.Stderr, ERR_MISSING_FILE_FLAG)
+		return
+	}
+
+	// Create new file
+	dataFile := NewDatabase(c.String("file"))
+	err := dataFile.CreateNewFile()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%q", err)
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "gBicLog: created file %s.\n", c.String("file"))
+	}
 }
