@@ -22,30 +22,67 @@ var DB_PROPERTIES = map[string]string{
 	"databaseVersion": "0.1",
 }
 
-type Database struct {
-	FilePath  string
-	DBHandler *sql.DB
+type database struct {
+	filePath  string
+	dbHandler *sql.DB
 }
 
-func NewDatabase(filePath string) *Database {
-	tmpDB := new(Database)
-	tmpDB.FilePath = filePath
+func NewDatabase(filePath string) *database {
+	tmpDB := new(database)
+	tmpDB.filePath = filePath
 	return tmpDB
 }
 
-func (d *Database) CreateNewFile() error {
+func (d *database) Open() error {
+	var fileErr error
+	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
+	if fileErr != nil {
+		return fileErr
+	} else {
+		return nil
+	}
+}
+
+func (d *database) Close() {
+	d.dbHandler.Close()
+}
+
+func (d *database) isTheFileBicLogDB() bool {
+	rows, err := d.dbHandler.Query("SELECT KEY, VALUE FROM PROPERTIES;")
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if rows.Next() == false {
+		return false
+	} else {
+		for rows.Next() {
+			var key, value string
+			err = rows.Scan(&key, &value)
+			if err != nil {
+				return false
+			}
+			if DB_PROPERTIES[key] != "" && DB_PROPERTIES[key] != value {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (d *database) CreateNewFile() error {
 	// Check if file exist and if so - return error
-	if _, err := os.Stat(d.FilePath); !os.IsNotExist(err) {
+	if _, err := os.Stat(d.filePath); !os.IsNotExist(err) {
 		return errors.New(ERR_FILE_ALREADY_EXISTS)
 	}
 
 	// Open file
-	var fileErr error
-	d.DBHandler, fileErr = sql.Open("sqlite3", d.FilePath)
-	if fileErr != nil {
+	err := d.Open()
+	if err != nil {
 		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
 	}
-	defer d.DBHandler.Close()
+	defer d.Close()
 
 	// Create tables
 	sqlStmt := `
@@ -95,21 +132,21 @@ func (d *Database) CreateNewFile() error {
 	);
 	COMMIT;
 	`
-	_, err := d.DBHandler.Exec(sqlStmt)
+	_, err = d.dbHandler.Exec(sqlStmt)
 	if err != nil {
-		os.Remove(d.FilePath)
+		os.Remove(d.filePath)
 		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
 	}
 
 	// Insert properties values
-	tx, err := d.DBHandler.Begin()
+	tx, err := d.dbHandler.Begin()
 	if err != nil {
-		os.Remove(d.FilePath)
+		os.Remove(d.filePath)
 		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
 	}
 	stmt, err := tx.Prepare("INSERT INTO properties VALUES (?,?);")
 	if err != nil {
-		os.Remove(d.FilePath)
+		os.Remove(d.filePath)
 		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
 	}
 	defer stmt.Close()
@@ -117,7 +154,7 @@ func (d *Database) CreateNewFile() error {
 		_, err := stmt.Exec(key, value)
 		if err != nil {
 			tx.Rollback()
-			os.Remove(d.FilePath)
+			os.Remove(d.filePath)
 			return errors.New(ERR_FILE_CANNOT_BE_CREATED)
 		}
 	}

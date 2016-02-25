@@ -6,7 +6,7 @@
 //DONE: create scheme of DB
 //DONE: config - data file name
 //DONE: command - init data file
-//TODO: checking if given file is a appropriate biclog file
+//DONE: checking if given file is a appropriate biclog file
 //TODO: command - type add
 //TODO: command - type list
 //TODO: command - type edit
@@ -53,7 +53,8 @@ const (
 )
 
 func main() {
-	cli.CommandHelpTemplate = `NAME:
+	cli.CommandHelpTemplate = `
+	NAME:
 	   {{.HelpName}} - {{.Usage}}
 	USAGE:
 	   {{.HelpName}}{{if .Subcommands}} [subcommand]{{end}}{{if .Flags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{if .Description}}

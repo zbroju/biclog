@@ -4,7 +4,6 @@
 package main
 
 import (
-	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"testing"
@@ -27,31 +26,15 @@ func TestInit(t *testing.T) {
 	}
 
 	// Open file
-	db, err := sql.Open("sqlite3", TEST_DB_FILE)
+	err = testdb.Open()
 	if err != nil {
-		t.Errorf("error touching the file")
+		t.Errorf("%q", err)
 	}
-	defer db.Close()
+	defer testdb.Close()
 
 	// Test if the file is a correct data file
-	rows, err := db.Query("SELECT KEY, VALUE FROM PROPERTIES;")
-	if err != nil {
-		t.Errorf("error preparing query")
-	}
-	defer rows.Close()
-	if rows.Next() == false {
-		t.Errorf("Properties table is empty.")
-	} else {
-		for rows.Next() {
-			var key, value string
-			err = rows.Scan(&key, &value)
-			if err != nil {
-				t.Errorf("Cannot read from PROPERTIES TABLE")
-			}
-			if DB_PROPERTIES[key] != "" && DB_PROPERTIES[key] != value {
-				t.Errorf("Unexpected properties in file %q.", TEST_DB_FILE)
-			}
-		}
+	if testdb.isTheFileBicLogDB() == false {
+		t.Errorf("File is not a correct BicLog file.")
 	}
 
 	// Remove temporary files
