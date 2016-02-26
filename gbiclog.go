@@ -44,6 +44,7 @@ import (
 // Error messages
 const (
 	ERR_MISSING_FILE_FLAG = "gBicLog: missing information about data file. Specify it with --file or -f flag.\n"
+	ERR_MISSING_NAME_FLAG = "gBicLog: missing name. Specify it with --name or -n flag.\n"
 )
 
 // Config settings
@@ -105,6 +106,11 @@ func main() {
 		Value: dataFile,
 		Usage: "data file",
 	}
+	flagName := cli.StringFlag{
+		Name:  "name, n",
+		Value: "",
+		Usage: "name",
+	}
 
 	// Commands
 	app.Commands = []cli.Command{
@@ -114,6 +120,20 @@ func main() {
 			Flags:   []cli.Flag{flagVerbose, flagFile},
 			Usage:   "Init a new data file specified by the user",
 			Action:  cmdInit,
+		},
+		{
+			Name:    "add",
+			Aliases: []string{"A"},
+			Usage:   "Add an object (bicycle, bicycle type, trip, trip category).",
+			Subcommands: []cli.Command{
+				{
+					Name:    "bicycle_type",
+					Aliases: []string{"bt"},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagName},
+					Usage:   "Add new bicycle type.",
+					Action:  cmdTypeAdd,
+				},
+			},
 		},
 	}
 	app.Run(os.Args)
@@ -136,5 +156,33 @@ func cmdInit(c *cli.Context) {
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
 		fmt.Fprintf(os.Stdout, "gBicLog: created file %s.\n", c.String("file"))
+	}
+}
+
+func cmdTypeAdd(c *cli.Context) {
+	// Check obligatory flags (file, name)
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, ERR_MISSING_FILE_FLAG)
+		return
+	}
+	if c.String("name") == "" {
+		fmt.Fprintf(os.Stderr, ERR_MISSING_NAME_FLAG)
+		return
+	}
+
+	// Open data file
+	dataFile := NewDatabase(c.String("file"))
+	err := dataFile.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%q", err)
+		return
+	}
+	defer dataFile.Close()
+
+	// Add new type
+	err = dataFile.TypeAdd(c.String("name"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%q", err)
+		return
 	}
 }

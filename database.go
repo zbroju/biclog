@@ -6,14 +6,18 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 )
 
 // Error messages
 const (
-	ERR_FILE_ALREADY_EXISTS    = "gBicLog: file already exists."
-	ERR_FILE_CANNOT_BE_CREATED = "gBicLog: file cannot be created."
+	ERR_FILE_ALREADY_EXISTS    = "gBicLog: file already exists.\n"
+	ERR_FILE_CANNOT_BE_CREATED = "gBicLog: file cannot be created.\n"
+	ERR_FILE_CANNOT_BE_OPEN    = "gBicLog: file cannot be open.\n"
+	ERR_FILE_NOT_APP_DB        = "gBicLog: given file is not an appropriate gBicLog file.\n"
+	ERR_WRITING_TO_FILE        = "gBicLog: error writing to file.\n"
 )
 
 // DB Properties
@@ -31,20 +35,6 @@ func NewDatabase(filePath string) *database {
 	tmpDB := new(database)
 	tmpDB.filePath = filePath
 	return tmpDB
-}
-
-func (d *database) Open() error {
-	var fileErr error
-	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
-	if fileErr != nil {
-		return fileErr
-	} else {
-		return nil
-	}
-}
-
-func (d *database) Close() {
-	d.dbHandler.Close()
 }
 
 func (d *database) isTheFileBicLogDB() bool {
@@ -78,11 +68,12 @@ func (d *database) CreateNewFile() error {
 	}
 
 	// Open file
-	err := d.Open()
-	if err != nil {
+	var fileErr error
+	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
+	if fileErr != nil {
 		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
 	}
-	defer d.Close()
+	defer d.dbHandler.Close()
 
 	// Create tables
 	sqlStmt := `
@@ -132,7 +123,7 @@ func (d *database) CreateNewFile() error {
 	);
 	COMMIT;
 	`
-	_, err = d.dbHandler.Exec(sqlStmt)
+	_, err := d.dbHandler.Exec(sqlStmt)
 	if err != nil {
 		os.Remove(d.filePath)
 		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
@@ -162,4 +153,31 @@ func (d *database) CreateNewFile() error {
 
 	// Return nil for error
 	return nil
+}
+
+func (d *database) Open() error {
+	var fileErr error
+	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
+	if fileErr != nil {
+		return errors.New(ERR_FILE_CANNOT_BE_OPEN)
+	}
+	if d.isTheFileBicLogDB() == false {
+		return errors.New(ERR_FILE_NOT_APP_DB)
+	} else {
+		return nil
+	}
+}
+
+func (d *database) Close() {
+	d.dbHandler.Close()
+}
+
+func (d *database) TypeAdd(name string) error {
+	sqlStmt := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", name)
+	_, err := d.dbHandler.Exec(sqlStmt)
+	if err != nil {
+		return errors.New(ERR_WRITING_TO_FILE)
+	} else {
+		return nil
+	}
 }
