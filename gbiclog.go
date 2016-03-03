@@ -35,23 +35,23 @@ package main
 import (
 	"fmt"
 	"github.com/codegangsta/cli"
+	"github.com/zbroju/gbiclog/lib/database"
 	"github.com/zbroju/gprops"
 	"os"
 	"path"
 	"strconv"
-	"github.com/zbroju/gBicLog/lib/database"
 )
 
 // Error messages
 const (
-	ERR_MISSING_FILE_FLAG = "gBicLog: missing information about data file. Specify it with --file or -f flag.\n"
-	ERR_MISSING_NAME_FLAG = "gBicLog: missing name. Specify it with --name or -n flag.\n"
+	errMissingFileFlag = "gBicLog: missing information about data file. Specify it with --file or -f flag.\n"
+	errMissingNameFlag = "gBicLog: missing name. Specify it with --name or -n flag.\n"
 )
 
 // Config settings
 const (
-	CONF_DATAFILE = "DATA_FILE"
-	CONF_VERBOSE  = "VERBOSE"
+	confDataFile = "DATA_FILE"
+	confVerbose  = "VERBOSE"
 )
 
 func main() {
@@ -81,8 +81,8 @@ func main() {
 		}
 	}
 	configFile.Close()
-	dataFile := configSettings.GetOrDefault(CONF_DATAFILE, "")
-	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(CONF_VERBOSE, "false"))
+	dataFile := configSettings.GetOrDefault(confDataFile, "")
+	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(confVerbose, "false"))
 	if err != nil {
 		verbose = false
 	}
@@ -143,7 +143,7 @@ func main() {
 func cmdInit(c *cli.Context) {
 	// Check the obligatory parameters and exit if missing
 	if c.String("file") == "" {
-		fmt.Fprint(os.Stderr, ERR_MISSING_FILE_FLAG)
+		fmt.Fprint(os.Stderr, errMissingFileFlag)
 		return
 	}
 
@@ -163,17 +163,16 @@ func cmdInit(c *cli.Context) {
 func cmdTypeAdd(c *cli.Context) {
 	// Check obligatory flags (file, name)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, ERR_MISSING_FILE_FLAG)
+		fmt.Fprintf(os.Stderr, errMissingFileFlag)
 		return
 	}
 	if c.String("name") == "" {
-		fmt.Fprintf(os.Stderr, ERR_MISSING_NAME_FLAG)
+		fmt.Fprintf(os.Stderr, errMissingNameFlag)
 		return
 	}
 
 	// Open data file
-	dataFile:=database.New(c.String("file"))
-	//dataFile := NewDatabase(c.String("file"))
+	dataFile := database.New(c.String("file"))
 	err := dataFile.Open()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%q", err)

@@ -11,19 +11,19 @@ import (
 )
 
 const (
-	TEST_DB_FILE = "testdb.sqlite"
+	testDBFile = "testdb.sqlite"
 )
 
 func TestCreateNewFile(t *testing.T) {
-	testdb := New(TEST_DB_FILE)
+	testdb := New(testDBFile)
 	err := testdb.CreateNew()
 	if err != nil {
 		t.Errorf("%q", err)
 	}
-	defer os.Remove(TEST_DB_FILE)
+	defer os.Remove(testDBFile)
 
 	// Test if a file was created
-	if _, err := os.Stat(TEST_DB_FILE); os.IsNotExist(err) {
+	if _, err := os.Stat(testDBFile); os.IsNotExist(err) {
 		t.Errorf("Test file not created at all.")
 	}
 
@@ -37,12 +37,12 @@ func TestCreateNewFile(t *testing.T) {
 
 func TestTypeAdd(t *testing.T) {
 	// Setup
-	testdb := New(TEST_DB_FILE)
+	testdb := New(testDBFile)
 	err := testdb.CreateNew()
 	if err != nil {
 		t.Errorf("%q", err)
 	}
-	defer os.Remove(TEST_DB_FILE)
+	defer os.Remove(testDBFile)
 	err = testdb.Open()
 	if err != nil {
 		t.Errorf("%q", err)

@@ -31,12 +31,6 @@ type database struct {
 	dbHandler *sql.DB
 }
 
-func New(filePath string) *database {
-	tmpDB := new(database)
-	tmpDB.filePath = filePath
-	return tmpDB
-}
-
 func (d *database) isTheFileBicLogDB() bool {
 	rows, err := d.dbHandler.Query("SELECT KEY, VALUE FROM PROPERTIES;")
 	if err != nil {
@@ -59,6 +53,12 @@ func (d *database) isTheFileBicLogDB() bool {
 	}
 
 	return true
+}
+
+func New(filePath string) *database {
+	tmpDB := new(database)
+	tmpDB.filePath = filePath
+	return tmpDB
 }
 
 func (d *database) CreateNew() error {
