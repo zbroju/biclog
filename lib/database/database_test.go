@@ -1,7 +1,7 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package main
+package database
 
 import (
 	_ "github.com/mattn/go-sqlite3"
@@ -15,8 +15,8 @@ const (
 )
 
 func TestCreateNewFile(t *testing.T) {
-	testdb := NewDatabase(TEST_DB_FILE)
-	err := testdb.CreateNewFile()
+	testdb := New(TEST_DB_FILE)
+	err := testdb.CreateNew()
 	if err != nil {
 		t.Errorf("%q", err)
 	}
@@ -37,8 +37,8 @@ func TestCreateNewFile(t *testing.T) {
 
 func TestTypeAdd(t *testing.T) {
 	// Setup
-	testdb := NewDatabase(TEST_DB_FILE)
-	err := testdb.CreateNewFile()
+	testdb := New(TEST_DB_FILE)
+	err := testdb.CreateNew()
 	if err != nil {
 		t.Errorf("%q", err)
 	}

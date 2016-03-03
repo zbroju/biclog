@@ -1,7 +1,7 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package main
+package database
 
 import (
 	"database/sql"
@@ -13,15 +13,15 @@ import (
 
 // Error messages
 const (
-	ERR_FILE_ALREADY_EXISTS    = "gBicLog: file already exists.\n"
-	ERR_FILE_CANNOT_BE_CREATED = "gBicLog: file cannot be created.\n"
-	ERR_FILE_CANNOT_BE_OPEN    = "gBicLog: file cannot be open.\n"
-	ERR_FILE_NOT_APP_DB        = "gBicLog: given file is not an appropriate gBicLog file.\n"
-	ERR_WRITING_TO_FILE        = "gBicLog: error writing to file.\n"
+	errFileAlreadyExists = "gBicLog: file already exists.\n"
+	errFileCannotBeCreated = "gBicLog: file cannot be created.\n"
+	errFileCannotBeOpen = "gBicLog: file cannot be open.\n"
+	errFileNotAppDB = "gBicLog: given file is not an appropriate gBicLog file.\n"
+	errWritingToFile = "gBicLog: error writing to file.\n"
 )
 
 // DB Properties
-var DB_PROPERTIES = map[string]string{
+var dbProperties = map[string]string{
 	"applicationName": "gBicLog",
 	"databaseVersion": "0.1",
 }
@@ -31,7 +31,7 @@ type database struct {
 	dbHandler *sql.DB
 }
 
-func NewDatabase(filePath string) *database {
+func New(filePath string) *database {
 	tmpDB := new(database)
 	tmpDB.filePath = filePath
 	return tmpDB
@@ -52,7 +52,7 @@ func (d *database) isTheFileBicLogDB() bool {
 			if err != nil {
 				return false
 			}
-			if DB_PROPERTIES[key] != "" && DB_PROPERTIES[key] != value {
+			if dbProperties[key] != "" && dbProperties[key] != value {
 				return false
 			}
 		}
@@ -61,17 +61,17 @@ func (d *database) isTheFileBicLogDB() bool {
 	return true
 }
 
-func (d *database) CreateNewFile() error {
+func (d *database) CreateNew() error {
 	// Check if file exist and if so - return error
 	if _, err := os.Stat(d.filePath); !os.IsNotExist(err) {
-		return errors.New(ERR_FILE_ALREADY_EXISTS)
+		return errors.New(errFileAlreadyExists)
 	}
 
 	// Open file
 	var fileErr error
 	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
 	if fileErr != nil {
-		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
+		return errors.New(errFileCannotBeCreated)
 	}
 	defer d.dbHandler.Close()
 
@@ -126,27 +126,27 @@ func (d *database) CreateNewFile() error {
 	_, err := d.dbHandler.Exec(sqlStmt)
 	if err != nil {
 		os.Remove(d.filePath)
-		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
+		return errors.New(errFileCannotBeCreated)
 	}
 
 	// Insert properties values
 	tx, err := d.dbHandler.Begin()
 	if err != nil {
 		os.Remove(d.filePath)
-		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
+		return errors.New(errFileCannotBeCreated)
 	}
 	stmt, err := tx.Prepare("INSERT INTO properties VALUES (?,?);")
 	if err != nil {
 		os.Remove(d.filePath)
-		return errors.New(ERR_FILE_CANNOT_BE_CREATED)
+		return errors.New(errFileCannotBeCreated)
 	}
 	defer stmt.Close()
-	for key, value := range DB_PROPERTIES {
+	for key, value := range dbProperties {
 		_, err := stmt.Exec(key, value)
 		if err != nil {
 			tx.Rollback()
 			os.Remove(d.filePath)
-			return errors.New(ERR_FILE_CANNOT_BE_CREATED)
+			return errors.New(errFileCannotBeCreated)
 		}
 	}
 	tx.Commit()
@@ -159,10 +159,10 @@ func (d *database) Open() error {
 	var fileErr error
 	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
 	if fileErr != nil {
-		return errors.New(ERR_FILE_CANNOT_BE_OPEN)
+		return errors.New(errFileCannotBeOpen)
 	}
 	if d.isTheFileBicLogDB() == false {
-		return errors.New(ERR_FILE_NOT_APP_DB)
+		return errors.New(errFileNotAppDB)
 	} else {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (d *database) TypeAdd(name string) error {
 	sqlStmt := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", name)
 	_, err := d.dbHandler.Exec(sqlStmt)
 	if err != nil {
-		return errors.New(ERR_WRITING_TO_FILE)
+		return errors.New(errWritingToFile)
 	} else {
 		return nil
 	}

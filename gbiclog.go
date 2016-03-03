@@ -7,7 +7,7 @@
 //DONE: config - data file name
 //DONE: command - init data file
 //DONE: checking if given file is a appropriate biclog file
-//TODO: command - type add
+//DONE: command - type add
 //TODO: command - type list
 //TODO: command - type edit
 //TODO: command - type delete
@@ -39,6 +39,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"github.com/zbroju/gBicLog/lib/database"
 )
 
 // Error messages
@@ -147,8 +148,8 @@ func cmdInit(c *cli.Context) {
 	}
 
 	// Create new file
-	dataFile := NewDatabase(c.String("file"))
-	err := dataFile.CreateNewFile()
+	dataFile := database.New(c.String("file"))
+	err := dataFile.CreateNew()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%q", err)
 	}
@@ -171,7 +172,8 @@ func cmdTypeAdd(c *cli.Context) {
 	}
 
 	// Open data file
-	dataFile := NewDatabase(c.String("file"))
+	dataFile:=database.New(c.String("file"))
+	//dataFile := NewDatabase(c.String("file"))
 	err := dataFile.Open()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%q", err)
