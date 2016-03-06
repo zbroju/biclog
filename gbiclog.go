@@ -35,11 +35,13 @@ package main
 import (
 	"fmt"
 	"github.com/codegangsta/cli"
-	"github.com/zbroju/gbiclog/lib/database"
+	"github.com/zbroju/gbiclog/lib/bicycleTypes"
+	"github.com/zbroju/gbiclog/lib/sqlitedb"
 	"github.com/zbroju/gprops"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 )
 
 // Error messages
@@ -52,6 +54,11 @@ const (
 const (
 	confDataFile = "DATA_FILE"
 	confVerbose  = "VERBOSE"
+)
+
+// Formatting strings for display
+const (
+	fsSeparator = "  "
 )
 
 func main() {
@@ -136,6 +143,21 @@ func main() {
 				},
 			},
 		},
+		{
+			Name:    "list",
+			Aliases: []string{"L"},
+			Flags:   []cli.Flag{flagVerbose, flagFile},
+			Usage:   "List objects (bicycles, bicycle types, trisp, trips categories",
+			Subcommands: []cli.Command{
+				{
+					Name:    "bicycle_type",
+					Aliases: []string{"bt"},
+					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Usage:   "List available bicycle types.",
+					Action:  cmdTypeList,
+				},
+			},
+		},
 	}
 	app.Run(os.Args)
 }
@@ -148,10 +170,10 @@ func cmdInit(c *cli.Context) {
 	}
 
 	// Create new file
-	dataFile := database.New(c.String("file"))
-	err := dataFile.CreateNew()
+	f := sqlitedb.New(c.String("file"))
+	err := f.CreateNew()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%q", err)
+		fmt.Fprintf(os.Stderr, "%s", err)
 	}
 
 	// Show summary if verbose
@@ -172,18 +194,50 @@ func cmdTypeAdd(c *cli.Context) {
 	}
 
 	// Open data file
-	dataFile := database.New(c.String("file"))
-	err := dataFile.Open()
+	f := sqlitedb.New(c.String("file"))
+	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%q", err)
+		fmt.Fprintf(os.Stderr, "%s", err)
 		return
 	}
-	defer dataFile.Close()
+	defer f.Close()
 
 	// Add new type
-	err = dataFile.TypeAdd(c.String("name"))
+	err = f.TypeAdd(bicycleTypes.BicycleType{0, c.String("name")})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%q", err)
+		fmt.Fprintf(os.Stderr, "%s", err)
 		return
+	}
+}
+
+func cmdTypeList(c *cli.Context) {
+	// Check obligatory flags (file)
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		return
+	}
+
+	// Open data file
+	f := sqlitedb.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+	}
+	defer f.Close()
+
+	// List bicycle types
+	types, err := f.TypeList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+	}
+	if len(types) == 0 {
+		fmt.Fprintf(os.Stdout, "gBicLog: no bicycle types.")
+		return
+	}
+	idH, nameH, idFS, nameFS := types.GetFormattingStrings()
+	fmt.Fprintf(os.Stdout, strings.Join([]string{idH, nameH, "\n"}, fsSeparator))
+	l := strings.Join([]string{idFS, nameFS, "\n"}, fsSeparator)
+	for _, t := range types {
+		fmt.Fprintf(os.Stdout, l, t.Id, t.Name)
 	}
 }

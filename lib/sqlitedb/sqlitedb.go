@@ -1,23 +1,25 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package database
+package sqlitedb
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/zbroju/gbiclog/lib/bicycleTypes"
 	"os"
 )
 
 // Error messages
 const (
-	errFileAlreadyExists = "gBicLog: file already exists.\n"
+	errFileAlreadyExists   = "gBicLog: file already exists.\n"
 	errFileCannotBeCreated = "gBicLog: file cannot be created.\n"
-	errFileCannotBeOpen = "gBicLog: file cannot be open.\n"
-	errFileNotAppDB = "gBicLog: given file is not an appropriate gBicLog file.\n"
-	errWritingToFile = "gBicLog: error writing to file.\n"
+	errFileCannotBeOpen    = "gBicLog: file cannot be open.\n"
+	errFileNotAppDB        = "gBicLog: given file is not an appropriate gBicLog file.\n"
+	errWritingToFile       = "gBicLog: error writing to file.\n"
+	errReadingFromFile     = "gBicLog: error reading from file.\n"
 )
 
 // DB Properties
@@ -26,12 +28,12 @@ var dbProperties = map[string]string{
 	"databaseVersion": "0.1",
 }
 
-type database struct {
+type Database struct {
 	filePath  string
 	dbHandler *sql.DB
 }
 
-func (d *database) isTheFileBicLogDB() bool {
+func (d *Database) isTheFileBicLogDB() bool {
 	rows, err := d.dbHandler.Query("SELECT KEY, VALUE FROM PROPERTIES;")
 	if err != nil {
 		return false
@@ -55,13 +57,13 @@ func (d *database) isTheFileBicLogDB() bool {
 	return true
 }
 
-func New(filePath string) *database {
-	tmpDB := new(database)
+func New(filePath string) *Database {
+	tmpDB := new(Database)
 	tmpDB.filePath = filePath
 	return tmpDB
 }
 
-func (d *database) CreateNew() error {
+func (d *Database) CreateNew() error {
 	// Check if file exist and if so - return error
 	if _, err := os.Stat(d.filePath); !os.IsNotExist(err) {
 		return errors.New(errFileAlreadyExists)
@@ -155,7 +157,7 @@ func (d *database) CreateNew() error {
 	return nil
 }
 
-func (d *database) Open() error {
+func (d *Database) Open() error {
 	var fileErr error
 	d.dbHandler, fileErr = sql.Open("sqlite3", d.filePath)
 	if fileErr != nil {
@@ -168,16 +170,34 @@ func (d *database) Open() error {
 	}
 }
 
-func (d *database) Close() {
+func (d *Database) Close() {
 	d.dbHandler.Close()
 }
 
-func (d *database) TypeAdd(name string) error {
-	sqlStmt := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", name)
+func (d *Database) TypeAdd(bt bicycleTypes.BicycleType) error {
+	sqlStmt := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", bt.Name)
 	_, err := d.dbHandler.Exec(sqlStmt)
 	if err != nil {
 		return errors.New(errWritingToFile)
 	} else {
 		return nil
 	}
+}
+
+func (d *Database) TypeList() (bicycleTypes.BicycleTypes, error) {
+	rows, err := d.dbHandler.Query("SELECT id, name FROM bicycle_types ORDER BY name;")
+	if err != nil {
+		return nil, errors.New(errReadingFromFile)
+	}
+	defer rows.Close()
+
+	tmpList := bicycleTypes.New()
+	for rows.Next() {
+		var tmpType bicycleTypes.BicycleType
+		rows.Scan(&tmpType.Id, &tmpType.Name)
+		tmpList = append(tmpList, tmpType)
+	}
+
+	return tmpList, nil
+
 }
