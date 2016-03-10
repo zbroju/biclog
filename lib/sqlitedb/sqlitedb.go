@@ -201,3 +201,13 @@ func (d *Database) TypeList() (bicycleTypes.BicycleTypes, error) {
 	return tmpList, nil
 
 }
+
+func (d *Database) TypeUpdate(bt bicycleTypes.BicycleType) error {
+	sqlStmt := fmt.Sprintf("UPDATE bicycle_types SET name='%s' WHERE id=%d;", bt.Name, bt.Id)
+	_, err := d.dbHandler.Exec(sqlStmt)
+	if err != nil {
+		return errors.New(errWritingToFile)
+	}
+
+	return nil
+}

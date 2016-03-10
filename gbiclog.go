@@ -8,8 +8,8 @@
 //DONE: command - init data file
 //DONE: checking if given file is a appropriate biclog file
 //DONE: command - type add
-//TODO: command - type list
-//TODO: command - type edit
+//DONE: command - type list
+//DONE: command - type edit
 //TODO: command - type delete
 //TODO: command - category add
 //TODO: command - category list
@@ -48,6 +48,7 @@ import (
 const (
 	errMissingFileFlag = "gBicLog: missing information about data file. Specify it with --file or -f flag.\n"
 	errMissingNameFlag = "gBicLog: missing name. Specify it with --name or -n flag.\n"
+	errMissingIdFlag   = "gBicLog: missing id. Specify it with --id or -i flag.\n"
 )
 
 // Config settings
@@ -119,6 +120,11 @@ func main() {
 		Value: "",
 		Usage: "name",
 	}
+	flagId := cli.IntFlag{
+		Name:  "id, i",
+		Value: -1,
+		Usage: "ID of an object",
+	}
 
 	// Commands
 	app.Commands = []cli.Command{
@@ -146,8 +152,7 @@ func main() {
 		{
 			Name:    "list",
 			Aliases: []string{"L"},
-			Flags:   []cli.Flag{flagVerbose, flagFile},
-			Usage:   "List objects (bicycles, bicycle types, trisp, trips categories",
+			Usage:   "List objects (bicycles, bicycle types, trips, trips categories",
 			Subcommands: []cli.Command{
 				{
 					Name:    "bicycle_type",
@@ -155,6 +160,20 @@ func main() {
 					Flags:   []cli.Flag{flagVerbose, flagFile},
 					Usage:   "List available bicycle types.",
 					Action:  cmdTypeList,
+				},
+			},
+		},
+		{
+			Name:    "edit",
+			Aliases: []string{"E"},
+			Usage:   "Edit an object (bicycle, bicycle type, trip, trip category",
+			Subcommands: []cli.Command{
+				{
+					Name:    "bicycle_type",
+					Aliases: []string{"bt"},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagName},
+					Usage:   "Edit bicycle type with given id.",
+					Action:  cmdTypeEdit,
 				},
 			},
 		},
@@ -203,11 +222,18 @@ func cmdTypeAdd(c *cli.Context) {
 	defer f.Close()
 
 	// Add new type
-	err = f.TypeAdd(bicycleTypes.BicycleType{0, c.String("name")})
+	nt := bicycleTypes.BicycleType{0, c.String("name")}
+	err = f.TypeAdd(nt)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		return
 	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "gBicLog: added new bicycle type: %s.\n", nt.Name)
+	}
+
 }
 
 func cmdTypeList(c *cli.Context) {
@@ -234,10 +260,61 @@ func cmdTypeList(c *cli.Context) {
 		fmt.Fprintf(os.Stdout, "gBicLog: no bicycle types.")
 		return
 	}
-	idH, nameH, idFS, nameFS := types.GetFormattingStrings()
+	idH, nameH, idFS, nameFS := types.GetDisplayStrings()
 	fmt.Fprintf(os.Stdout, strings.Join([]string{idH, nameH, "\n"}, fsSeparator))
 	l := strings.Join([]string{idFS, nameFS, "\n"}, fsSeparator)
 	for _, t := range types {
 		fmt.Fprintf(os.Stdout, l, t.Id, t.Name)
+	}
+}
+
+func cmdTypeEdit(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		return
+	}
+	id := c.Int("id")
+	if id < 0 {
+		fmt.Fprintf(os.Stderr, errMissingIdFlag)
+		return
+	}
+	newName := c.String("name")
+	if newName == "" {
+		fmt.Fprintf(os.Stderr, errMissingNameFlag)
+		return
+	}
+
+	// Open data file
+	f := sqlitedb.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+	}
+	defer f.Close()
+
+	// Edit bicycle type
+	btl, err := f.TypeList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		return
+	}
+	bt, err := btl.GetWithId(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		return
+	}
+	oldName := bt.Name
+	bt.Name = newName
+
+	err = f.TypeUpdate(bt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		return
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "gBicLog: change bicycle type name from %s to %s.\n", oldName, newName)
 	}
 }

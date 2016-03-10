@@ -7,7 +7,23 @@ import (
 	"testing"
 )
 
-func TestWithName(t *testing.T) {
+func TestGetWithId(t *testing.T) {
+	bicList := New()
+
+	bt1 := BicycleType{1, "road bike"}
+	bt2 := BicycleType{2, "city bike"}
+	bicList = append(bicList, bt1)
+	bicList = append(bicList, bt2)
+
+	bt, err := bicList.GetWithId(1)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if bt.Name != bt1.Name {
+		t.Errorf("the name does not match the id")
+	}
+}
+func TestGetWithName(t *testing.T) {
 	bicList := New()
 
 	bicList = append(bicList, BicycleType{1, "road bike"})
@@ -24,13 +40,13 @@ func TestWithName(t *testing.T) {
 	}
 }
 
-func TestGetFormattingStringsFields(t *testing.T) {
+func TestGetDisplayStrings(t *testing.T) {
 	bicList := New()
 
 	bicList = append(bicList, BicycleType{1, "road bike"})
 	bicList = append(bicList, BicycleType{2, "city"})
 
-	_, _, fsId, fsName := bicList.GetFormattingStrings()
+	_, _, fsId, fsName := bicList.GetDisplayStrings()
 	if fsId != "%2d" {
 		t.Errorf("formatting strings do not match. Is %s and expected %s", fsId, "%2d")
 	}

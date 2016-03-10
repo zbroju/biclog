@@ -11,7 +11,8 @@ import (
 
 // Error messages
 const (
-	errTypeNotFound = "gBicLog: bicycle type not found or the name is ambiguous"
+	errTypeNotFound      = "gBicLog: bicycle type not found\n"
+	errTypeAmbiguousName = "gBicLog: bicycle type name is ambiguous\n"
 )
 
 // Headers titles
@@ -20,6 +21,7 @@ const (
 	nameHeaderTitle = "B.TYPE"
 )
 
+// Basic types
 type BicycleType struct {
 	Id   int
 	Name string
@@ -27,8 +29,23 @@ type BicycleType struct {
 
 type BicycleTypes []BicycleType
 
+// Types constant/variables
+var (
+	nullType BicycleType = BicycleType{0, ""}
+)
+
 func New() BicycleTypes {
 	return make(BicycleTypes, 0)
+}
+
+func (bt *BicycleTypes) GetWithId(id int) (BicycleType, error) {
+	for _, t := range *bt {
+		if t.Id == id {
+			return t, nil
+		}
+	}
+
+	return nullType, errors.New(errTypeNotFound)
 }
 
 func (bt *BicycleTypes) GetWithName(name string) (BicycleType, error) {
@@ -42,14 +59,24 @@ func (bt *BicycleTypes) GetWithName(name string) (BicycleType, error) {
 		}
 	}
 
-	if counter == 1 {
+	switch counter {
+	case 0:
+		return nullType, errors.New(errTypeNotFound)
+	case 1:
 		return foundType, nil
-	} else {
-		return BicycleType{0, ""}, errors.New(errTypeNotFound)
+	default:
+		return nullType, errors.New(errTypeAmbiguousName)
 	}
+	/*
+		if counter == 1 {
+			return foundType, nil
+		} else {
+			return BicycleType{0, ""}, errors.New(errTypeNotFound)
+		}
+	*/
 }
 
-func (bt *BicycleTypes) GetFormattingStrings() (idHeader, nameHeader, idFS, nameFS string) {
+func (bt *BicycleTypes) GetDisplayStrings() (idHeader, nameHeader, idFS, nameFS string) {
 	// Find longest strings
 	maxLenId := len(idHeaderTitle)
 	maxLenName := len(nameHeaderTitle)
