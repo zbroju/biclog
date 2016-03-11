@@ -10,7 +10,7 @@
 //DONE: command - type add
 //DONE: command - type list
 //DONE: command - type edit
-//TODO: command - type delete
+//DONE: command - type delete
 //TODO: command - category add
 //TODO: command - category list
 //TODO: command - category edit
@@ -60,6 +60,12 @@ const (
 // Formatting strings for display
 const (
 	fsSeparator = "  "
+)
+
+// Objects
+const (
+	objectBicycleType      = "bicycle_type"
+	objectBicycleTypeAlias = "bt"
 )
 
 func main() {
@@ -141,8 +147,8 @@ func main() {
 			Usage:   "Add an object (bicycle, bicycle type, trip, trip category).",
 			Subcommands: []cli.Command{
 				{
-					Name:    "bicycle_type",
-					Aliases: []string{"bt"},
+					Name:    objectBicycleType,
+					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagName},
 					Usage:   "Add new bicycle type.",
 					Action:  cmdTypeAdd,
@@ -152,11 +158,11 @@ func main() {
 		{
 			Name:    "list",
 			Aliases: []string{"L"},
-			Usage:   "List objects (bicycles, bicycle types, trips, trips categories",
+			Usage:   "List objects (bicycles, bicycle types, trips, trips categories)",
 			Subcommands: []cli.Command{
 				{
-					Name:    "bicycle_type",
-					Aliases: []string{"bt"},
+					Name:    objectBicycleType,
+					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile},
 					Usage:   "List available bicycle types.",
 					Action:  cmdTypeList,
@@ -166,14 +172,28 @@ func main() {
 		{
 			Name:    "edit",
 			Aliases: []string{"E"},
-			Usage:   "Edit an object (bicycle, bicycle type, trip, trip category",
+			Usage:   "Edit an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{
-					Name:    "bicycle_type",
-					Aliases: []string{"bt"},
+					Name:    objectBicycleType,
+					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagName},
 					Usage:   "Edit bicycle type with given id.",
 					Action:  cmdTypeEdit,
+				},
+			},
+		},
+		{
+			Name:    "delete",
+			Aliases: []string{"D"},
+			Usage:   "Delete an object (bicycle, bicycle type, trip, trip category)",
+			Subcommands: []cli.Command{
+				{
+					Name:    objectBicycleType,
+					Aliases: []string{objectBicycleTypeAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Usage:   "Delete bicycle type with given id.",
+					Action:  cmdTypeDelete,
 				},
 			},
 		},
@@ -316,5 +336,49 @@ func cmdTypeEdit(c *cli.Context) {
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
 		fmt.Fprintf(os.Stdout, "gBicLog: change bicycle type name from %s to %s.\n", oldName, newName)
+	}
+}
+
+func cmdTypeDelete(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		return
+	}
+	id := c.Int("id")
+	if id < 0 {
+		fmt.Fprintf(os.Stderr, errMissingIdFlag)
+		return
+	}
+
+	// Open data file
+	f := sqlitedb.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+	}
+	defer f.Close()
+
+	// Delete bicycle type
+	btl, err := f.TypeList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		return
+	}
+	bt, err := btl.GetWithId(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		return
+	}
+
+	err = f.TypeDelete(bt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		return
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "gBicLog: deleted bicycle type %s.\n", bt.Name)
 	}
 }

@@ -211,3 +211,13 @@ func (d *Database) TypeUpdate(bt bicycleTypes.BicycleType) error {
 
 	return nil
 }
+
+func (d *Database) TypeDelete(bt bicycleTypes.BicycleType) error {
+	sqlStmt := fmt.Sprintf("DELETE FROM bicycle_types WHERE id=%d;", bt.Id)
+	_, err := d.dbHandler.Exec(sqlStmt)
+	if err != nil {
+		return errors.New(errWritingToFile)
+	}
+
+	return nil
+}

@@ -67,13 +67,6 @@ func (bt *BicycleTypes) GetWithName(name string) (BicycleType, error) {
 	default:
 		return nullType, errors.New(errTypeAmbiguousName)
 	}
-	/*
-		if counter == 1 {
-			return foundType, nil
-		} else {
-			return BicycleType{0, ""}, errors.New(errTypeNotFound)
-		}
-	*/
 }
 
 func (bt *BicycleTypes) GetDisplayStrings() (idHeader, nameHeader, idFS, nameFS string) {

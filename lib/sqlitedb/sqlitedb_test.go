@@ -152,3 +152,46 @@ func TestTypeEdit(t *testing.T) {
 		t.Errorf("Update type name does not match the expected one.")
 	}
 }
+
+func TestTypeDelete(t *testing.T) {
+	// Setup
+	db := New(testDBFile)
+	err := db.CreateNew()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer os.Remove(testDBFile)
+	err = db.Open()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer db.Close()
+
+	// Test deleting types
+	bikeType := bicycleTypes.BicycleType{0, "road bike"}
+	err = db.TypeAdd(bikeType)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	btypes, err := db.TypeList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	bikeType, err = btypes.GetWithName("road")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	err = db.TypeDelete(bikeType)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	btypes, err = db.TypeList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	bikeType, err = btypes.GetWithName("road")
+	if err == nil {
+		t.Errorf("%s", err)
+	}
+}
