@@ -232,3 +232,21 @@ func (d *Database) CategoryAdd(tc tripCategories.TripCategory) error {
 		return nil
 	}
 }
+
+func (d *Database) CategoryList() (tripCategories.TripCategories, error) {
+	rows, err := d.dbHandler.Query("SELECT id, name FROM trip_categories ORDER BY name;")
+	if err != nil {
+		return nil, errors.New(errReadingFromFile)
+	}
+	defer rows.Close()
+
+	tmpList := tripCategories.New()
+	for rows.Next() {
+		var tmpCategory tripCategories.TripCategory
+		rows.Scan(&tmpCategory.Id, &tmpCategory.Name)
+		tmpList = append(tmpList, tmpCategory)
+	}
+
+	return tmpList, nil
+
+}

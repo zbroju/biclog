@@ -180,6 +180,13 @@ func main() {
 					Usage:   "List available bicycle types.",
 					Action:  cmdTypeList,
 				},
+				{
+					Name:    objectTripCategory,
+					Aliases: []string{objectTripCategoryAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Usage:   "List available trip categories.",
+					Action:  cmdCategoryList,
+				},
 			},
 		},
 		{
@@ -429,4 +436,36 @@ func cmdCategoryAdd(c *cli.Context) {
 		fmt.Fprintf(os.Stdout, "%s: added new trip category: %s\n", appName, nc.Name)
 	}
 
+}
+
+func cmdCategoryList(c *cli.Context) {
+	// Check obligatory flags (file)
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
+		return
+	}
+
+	// Open data file
+	f := dataFile.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+	}
+	defer f.Close()
+
+	// List trip categories
+	cats, err := f.CategoryList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+	}
+	if len(cats) == 0 {
+		fmt.Fprintf(os.Stdout, "%s: no trip categories\n", appName)
+		return
+	}
+	idH, nameH, idFS, nameFS := cats.GetDisplayStrings()
+	fmt.Fprintf(os.Stdout, strings.Join([]string{idH, nameH}, fsSeparator)+"\n")
+	l := strings.Join([]string{idFS, nameFS}, fsSeparator) + "\n"
+	for _, t := range cats {
+		fmt.Fprintf(os.Stdout, l, t.Id, t.Name)
+	}
 }

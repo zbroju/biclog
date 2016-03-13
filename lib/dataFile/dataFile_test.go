@@ -230,3 +230,40 @@ func TestCategoryAdd(t *testing.T) {
 		}
 	}
 }
+
+func TestCategoryList(t *testing.T) {
+	// Setup
+	testdb := New(testDBFile)
+	err := testdb.CreateNew()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer os.Remove(testDBFile)
+	err = testdb.Open()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer testdb.Close()
+
+	// Test TypeList
+	training := tripCategories.TripCategory{0, "training"}
+	commuting := tripCategories.TripCategory{0, "commuting"}
+	err = testdb.CategoryAdd(training)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	err = testdb.CategoryAdd(commuting)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	tmpList, err := testdb.CategoryList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if _, err := tmpList.GetWithName(training.Name); err != nil {
+		t.Errorf("%s", err)
+	}
+	if _, err := tmpList.GetWithName(commuting.Name); err != nil {
+		t.Errorf("%s", err)
+	}
+}
