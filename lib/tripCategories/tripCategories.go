@@ -1,7 +1,7 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package bicycleTypes
+package tripCategories
 
 import (
 	"errors"
@@ -12,69 +12,69 @@ import (
 
 // Error messages
 const (
-	errTypeNotFound      = "bicycle type not found"
-	errTypeAmbiguousName = "bicycle type name is ambiguous"
+	errCategoryNotFound      = "trip category not found"
+	errCategoryAmbiguousName = "trip category name is ambiguous"
 )
 
 // Headers titles
 const (
 	idHeaderTitle   = "ID"
-	nameHeaderTitle = "B.TYPE"
+	nameHeaderTitle = "T.CATEGORY"
 )
 
 // Basic types
-type BicycleType struct {
+type TripCategory struct {
 	Id   int
 	Name string
 }
 
-type BicycleTypes []BicycleType
+type TripCategories []TripCategory
 
 // Types constant/variables
 var (
-	nullType BicycleType = BicycleType{0, ""}
+	nullType TripCategory = TripCategory{0, ""}
 )
 
-func New() BicycleTypes {
-	return make(BicycleTypes, 0)
+func New() TripCategories {
+	return make(TripCategories, 0)
 }
 
-func (bt *BicycleTypes) GetWithId(id int) (BicycleType, error) {
-	for _, t := range *bt {
+func (tc *TripCategories) GetWithId(id int) (TripCategory, error) {
+	for _, t := range *tc {
 		if t.Id == id {
 			return t, nil
 		}
 	}
 
-	return nullType, errors.New(errTypeNotFound)
+	return nullType, errors.New(errCategoryNotFound)
 }
 
-func (bt *BicycleTypes) GetWithName(name string) (BicycleType, error) {
+func (tc *TripCategories) GetWithName(name string) (TripCategory, error) {
 	var counter int
-	var foundType BicycleType
+	var foundCategory TripCategory
 
-	for _, tmpType := range *bt {
-		if strings.Contains(tmpType.Name, name) == true {
+	for _, tmpCategory := range *tc {
+		if strings.Contains(tmpCategory.Name, name) == true {
 			counter++
-			foundType = tmpType
+			foundCategory = tmpCategory
 		}
 	}
 
 	switch counter {
 	case 0:
-		return nullType, errors.New(errTypeNotFound)
+		return nullType, errors.New(errCategoryNotFound)
 	case 1:
-		return foundType, nil
+		return foundCategory, nil
 	default:
-		return nullType, errors.New(errTypeAmbiguousName)
+		return nullType, errors.New(errCategoryAmbiguousName)
 	}
 }
 
-func (bt *BicycleTypes) GetDisplayStrings() (idHeader, nameHeader, idFS, nameFS string) {
+func (tc *TripCategories) GetDisplayStrings() (idHeader, nameHeader, idFS, nameFS string) {
 	// Find longest strings
 	maxLenId := utf8.RuneCountInString(idHeaderTitle)
 	maxLenName := utf8.RuneCountInString(nameHeaderTitle)
-	for _, t := range *bt {
+	for _, t := range *tc {
 		if lId := utf8.RuneCountInString(string(t.Id)); lId > maxLenId {
 			maxLenId = lId
 		}

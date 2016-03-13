@@ -1,7 +1,7 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package sqlitedb
+package dataFile
 
 import (
 	"database/sql"
@@ -9,17 +9,18 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/zbroju/gbiclog/lib/bicycleTypes"
+	"github.com/zbroju/gbiclog/lib/tripCategories"
 	"os"
 )
 
 // Error messages
 const (
-	errFileAlreadyExists   = "gBicLog: file already exists.\n"
-	errFileCannotBeCreated = "gBicLog: file cannot be created.\n"
-	errFileCannotBeOpen    = "gBicLog: file cannot be open.\n"
-	errFileNotAppDB        = "gBicLog: given file is not an appropriate gBicLog file.\n"
-	errWritingToFile       = "gBicLog: error writing to file.\n"
-	errReadingFromFile     = "gBicLog: error reading from file.\n"
+	errFileAlreadyExists   = "file already exists"
+	errFileCannotBeCreated = "file cannot be created"
+	errFileCannotBeOpen    = "file cannot be open"
+	errFileNotAppDB        = "given file is not an appropriate gBicLog file"
+	errWritingToFile       = "error writing to file"
+	errReadingFromFile     = "error reading from file"
 )
 
 // DB Properties
@@ -220,4 +221,14 @@ func (d *Database) TypeDelete(bt bicycleTypes.BicycleType) error {
 	}
 
 	return nil
+}
+
+func (d *Database) CategoryAdd(tc tripCategories.TripCategory) error {
+	sqlStmt := fmt.Sprintf("INSERT INTO trip_categories VALUES (NULL, '%s');", tc.Name)
+	_, err := d.dbHandler.Exec(sqlStmt)
+	if err != nil {
+		return errors.New(errWritingToFile)
+	} else {
+		return nil
+	}
 }

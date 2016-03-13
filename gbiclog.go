@@ -11,7 +11,7 @@
 //DONE: command - type list
 //DONE: command - type edit
 //DONE: command - type delete
-//TODO: command - category add
+//DONE: command - category add
 //TODO: command - category list
 //TODO: command - category edit
 //TODO: command - category delete
@@ -36,7 +36,8 @@ import (
 	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/zbroju/gbiclog/lib/bicycleTypes"
-	"github.com/zbroju/gbiclog/lib/sqlitedb"
+	"github.com/zbroju/gbiclog/lib/dataFile"
+	"github.com/zbroju/gbiclog/lib/tripCategories"
 	"github.com/zbroju/gprops"
 	"os"
 	"path"
@@ -46,9 +47,10 @@ import (
 
 // Error messages
 const (
-	errMissingFileFlag = "gBicLog: missing information about data file. Specify it with --file or -f flag.\n"
-	errMissingNameFlag = "gBicLog: missing name. Specify it with --name or -n flag.\n"
-	errMissingIdFlag   = "gBicLog: missing id. Specify it with --id or -i flag.\n"
+	errSyntaxErrorInConfig = "syntax error in config file"
+	errMissingFileFlag     = "missing information about data file. Specify it with --file or -f flag"
+	errMissingNameFlag     = "missing name. Specify it with --name or -n flag"
+	errMissingIdFlag       = "missing id. Specify it with --id or -i flag"
 )
 
 // Config settings
@@ -57,8 +59,9 @@ const (
 	confVerbose  = "VERBOSE"
 )
 
-// Formatting strings for display
+// Application internal settings
 const (
+	appName     = "gBicLog"
 	fsSeparator = "  "
 )
 
@@ -66,6 +69,9 @@ const (
 const (
 	objectBicycleType      = "bicycle_type"
 	objectBicycleTypeAlias = "bt"
+
+	objectTripCategory      = "trip_category"
+	objectTripCategoryAlias = "tc"
 )
 
 func main() {
@@ -90,7 +96,7 @@ func main() {
 	if err == nil {
 		err = configSettings.Load(configFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "gBicLog: syntax error in %s. Exit.\n", configFile.Name())
+			fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errSyntaxErrorInConfig)
 			return
 		}
 	}
@@ -153,6 +159,13 @@ func main() {
 					Usage:   "Add new bicycle type.",
 					Action:  cmdTypeAdd,
 				},
+				{
+					Name:    objectTripCategory,
+					Aliases: []string{objectTripCategoryAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagName},
+					Usage:   "Add new trip category.",
+					Action:  cmdCategoryAdd,
+				},
 			},
 		},
 		{
@@ -204,39 +217,39 @@ func main() {
 func cmdInit(c *cli.Context) {
 	// Check the obligatory parameters and exit if missing
 	if c.String("file") == "" {
-		fmt.Fprint(os.Stderr, errMissingFileFlag)
+		fmt.Fprint(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
 
 	// Create new file
-	f := sqlitedb.New(c.String("file"))
+	f := dataFile.New(c.String("file"))
 	err := f.CreateNew()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "gBicLog: created file %s.\n", c.String("file"))
+		fmt.Fprintf(os.Stdout, "%s: created file %s.\n", appName, c.String("file"))
 	}
 }
 
 func cmdTypeAdd(c *cli.Context) {
 	// Check obligatory flags (file, name)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
 	if c.String("name") == "" {
-		fmt.Fprintf(os.Stderr, errMissingNameFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
 		return
 	}
 
 	// Open data file
-	f := sqlitedb.New(c.String("file"))
+	f := dataFile.New(c.String("file"))
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 	defer f.Close()
@@ -245,13 +258,13 @@ func cmdTypeAdd(c *cli.Context) {
 	nt := bicycleTypes.BicycleType{0, c.String("name")}
 	err = f.TypeAdd(nt)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "gBicLog: added new bicycle type: %s.\n", nt.Name)
+		fmt.Fprintf(os.Stdout, "%s: added new bicycle type: %s\n", appName, nt.Name)
 	}
 
 }
@@ -259,30 +272,30 @@ func cmdTypeAdd(c *cli.Context) {
 func cmdTypeList(c *cli.Context) {
 	// Check obligatory flags (file)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
 
 	// Open data file
-	f := sqlitedb.New(c.String("file"))
+	f := dataFile.New(c.String("file"))
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 	}
 	defer f.Close()
 
 	// List bicycle types
 	types, err := f.TypeList()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 	}
 	if len(types) == 0 {
-		fmt.Fprintf(os.Stdout, "gBicLog: no bicycle types.")
+		fmt.Fprintf(os.Stdout, "%s: no bicycle types\n", appName)
 		return
 	}
 	idH, nameH, idFS, nameFS := types.GetDisplayStrings()
-	fmt.Fprintf(os.Stdout, strings.Join([]string{idH, nameH, "\n"}, fsSeparator))
-	l := strings.Join([]string{idFS, nameFS, "\n"}, fsSeparator)
+	fmt.Fprintf(os.Stdout, strings.Join([]string{idH, nameH}, fsSeparator)+"\n")
+	l := strings.Join([]string{idFS, nameFS}, fsSeparator) + "\n"
 	for _, t := range types {
 		fmt.Fprintf(os.Stdout, l, t.Id, t.Name)
 	}
@@ -291,37 +304,37 @@ func cmdTypeList(c *cli.Context) {
 func cmdTypeEdit(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
 	id := c.Int("id")
 	if id < 0 {
-		fmt.Fprintf(os.Stderr, errMissingIdFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
 		return
 	}
 	newName := c.String("name")
 	if newName == "" {
-		fmt.Fprintf(os.Stderr, errMissingNameFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
 		return
 	}
 
 	// Open data file
-	f := sqlitedb.New(c.String("file"))
+	f := dataFile.New(c.String("file"))
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 	}
 	defer f.Close()
 
 	// Edit bicycle type
 	btl, err := f.TypeList()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 	bt, err := btl.GetWithId(id)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 	oldName := bt.Name
@@ -329,56 +342,91 @@ func cmdTypeEdit(c *cli.Context) {
 
 	err = f.TypeUpdate(bt)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "gBicLog: change bicycle type name from %s to %s.\n", oldName, newName)
+		fmt.Fprintf(os.Stdout, "%s: change bicycle type name from %s to %s\n", appName, oldName, newName)
 	}
 }
 
 func cmdTypeDelete(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, errMissingFileFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
 	id := c.Int("id")
 	if id < 0 {
-		fmt.Fprintf(os.Stderr, errMissingIdFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
 		return
 	}
 
 	// Open data file
-	f := sqlitedb.New(c.String("file"))
+	f := dataFile.New(c.String("file"))
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 	}
 	defer f.Close()
 
 	// Delete bicycle type
 	btl, err := f.TypeList()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 	bt, err := btl.GetWithId(id)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 
 	err = f.TypeDelete(bt)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "gBicLog: deleted bicycle type %s.\n", bt.Name)
+		fmt.Fprintf(os.Stdout, "%s: deleted bicycle type %s\n", appName, bt.Name)
 	}
+}
+
+func cmdCategoryAdd(c *cli.Context) {
+	// Check obligatory flags (file, name)
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
+		return
+	}
+	if c.String("name") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
+		return
+	}
+
+	// Open data file
+	f := dataFile.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+	defer f.Close()
+
+	// Add new category
+	nc := tripCategories.TripCategory{0, c.String("name")}
+	err = f.CategoryAdd(nc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "%s: added new trip category: %s\n", appName, nc.Name)
+	}
+
 }

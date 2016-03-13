@@ -1,11 +1,12 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package sqlitedb
+package dataFile
 
 import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/zbroju/gbiclog/lib/bicycleTypes"
+	"github.com/zbroju/gbiclog/lib/tripCategories"
 	"os"
 	"testing"
 )
@@ -193,5 +194,39 @@ func TestTypeDelete(t *testing.T) {
 	bikeType, err = btypes.GetWithName("road")
 	if err == nil {
 		t.Errorf("%s", err)
+	}
+}
+
+func TestCategoryAdd(t *testing.T) {
+	// Setup
+	testdb := New(testDBFile)
+	err := testdb.CreateNew()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer os.Remove(testDBFile)
+	err = testdb.Open()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer testdb.Close()
+
+	// Test TypeAdd
+	tc := tripCategories.TripCategory{0, "commuting"}
+	err = testdb.CategoryAdd(tc)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	rows, err := testdb.dbHandler.Query("SELECT * FROM trip_categories;")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ic string
+		rows.Scan(nil, &ic)
+		if ic == tc.Name {
+			t.Errorf("Inserted type and read type do not match")
+		}
 	}
 }
