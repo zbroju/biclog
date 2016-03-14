@@ -267,3 +267,50 @@ func TestCategoryList(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 }
+
+func TestCategoryEdit(t *testing.T) {
+	// Setup
+	db := New(testDBFile)
+	err := db.CreateNew()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer os.Remove(testDBFile)
+	err = db.Open()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer db.Close()
+
+	// Test edit type
+	cat := tripCategories.TripCategory{0, "training"}
+	err = db.CategoryAdd(cat)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	catList, err := db.CategoryList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	cat, err = catList.GetWithName("train")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	cat.Name = "commuting"
+	err = db.CategoryUpdate(cat)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	catList, err = db.CategoryList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	updatedCat, err := catList.GetWithName("commut")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	if cat.Name != updatedCat.Name {
+		t.Errorf("Update type name does not match the expected one.")
+	}
+}

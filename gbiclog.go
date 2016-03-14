@@ -12,8 +12,8 @@
 //DONE: command - type edit
 //DONE: command - type delete
 //DONE: command - category add
-//TODO: command - category list
-//TODO: command - category edit
+//DONE : command - category list
+//DONE: command - category edit
 //TODO: command - category delete
 //TODO: command - bicycle add
 //TODO: command - bicycle list
@@ -200,6 +200,13 @@ func main() {
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagName},
 					Usage:   "Edit bicycle type with given id.",
 					Action:  cmdTypeEdit,
+				},
+				{
+					Name:    objectTripCategory,
+					Aliases: []string{objectTripCategoryAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagName},
+					Usage:   "Edit trip category with given id.",
+					Action:  cmdCategoryEdit,
 				},
 			},
 		},
@@ -467,5 +474,56 @@ func cmdCategoryList(c *cli.Context) {
 	l := strings.Join([]string{idFS, nameFS}, fsSeparator) + "\n"
 	for _, t := range cats {
 		fmt.Fprintf(os.Stdout, l, t.Id, t.Name)
+	}
+}
+
+func cmdCategoryEdit(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
+		return
+	}
+	id := c.Int("id")
+	if id < 0 {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
+		return
+	}
+	newName := c.String("name")
+	if newName == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
+		return
+	}
+
+	// Open data file
+	f := dataFile.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+	}
+	defer f.Close()
+
+	// Edit trip category
+	tcl, err := f.CategoryList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+	tc, err := tcl.GetWithId(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+	oldName := tc.Name
+	tc.Name = newName
+
+	err = f.CategoryUpdate(tc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "%s: change trip category name from %s to %s\n", appName, oldName, newName)
 	}
 }

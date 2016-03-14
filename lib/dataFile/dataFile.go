@@ -250,3 +250,13 @@ func (d *Database) CategoryList() (tripCategories.TripCategories, error) {
 	return tmpList, nil
 
 }
+
+func (d *Database) CategoryUpdate(tc tripCategories.TripCategory) error {
+	sqlStmt := fmt.Sprintf("UPDATE trip_categories SET name='%s' WHERE id=%d;", tc.Name, tc.Id)
+	_, err := d.dbHandler.Exec(sqlStmt)
+	if err != nil {
+		return errors.New(errWritingToFile)
+	}
+
+	return nil
+}
