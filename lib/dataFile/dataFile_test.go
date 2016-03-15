@@ -314,3 +314,46 @@ func TestCategoryEdit(t *testing.T) {
 		t.Errorf("Update type name does not match the expected one.")
 	}
 }
+
+func TestCategoryDelete(t *testing.T) {
+	// Setup
+	db := New(testDBFile)
+	err := db.CreateNew()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer os.Remove(testDBFile)
+	err = db.Open()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	defer db.Close()
+
+	// Test deleting types
+	cat := tripCategories.TripCategory{0, "commuting"}
+	err = db.CategoryAdd(cat)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	cats, err := db.CategoryList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	cat, err = cats.GetWithName("commut")
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	err = db.CategoryDelete(cat)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	cats, err = db.CategoryList()
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	cat, err = cats.GetWithName("commut")
+	if err == nil {
+		t.Errorf("%s", err)
+	}
+}

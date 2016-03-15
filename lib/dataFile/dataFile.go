@@ -260,3 +260,13 @@ func (d *Database) CategoryUpdate(tc tripCategories.TripCategory) error {
 
 	return nil
 }
+
+func (d *Database) CategoryDelete(tc tripCategories.TripCategory) error {
+	sqlStmt := fmt.Sprintf("DELETE FROM trip_categories WHERE id=%d;", tc.Id)
+	_, err := d.dbHandler.Exec(sqlStmt)
+	if err != nil {
+		return errors.New(errWritingToFile)
+	}
+
+	return nil
+}

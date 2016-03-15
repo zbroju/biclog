@@ -14,7 +14,7 @@
 //DONE: command - category add
 //DONE : command - category list
 //DONE: command - category edit
-//TODO: command - category delete
+//DONE: command - category delete
 //TODO: command - bicycle add
 //TODO: command - bicycle list
 //TODO: command - bicycle edit
@@ -221,6 +221,13 @@ func main() {
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
 					Usage:   "Delete bicycle type with given id.",
 					Action:  cmdTypeDelete,
+				},
+				{
+					Name:    objectTripCategory,
+					Aliases: []string{objectTripCategoryAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Usage:   "Delete trip category with given id.",
+					Action:  cmdCategoryDelete,
 				},
 			},
 		},
@@ -525,5 +532,49 @@ func cmdCategoryEdit(c *cli.Context) {
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
 		fmt.Fprintf(os.Stdout, "%s: change trip category name from %s to %s\n", appName, oldName, newName)
+	}
+}
+
+func cmdCategoryDelete(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
+		return
+	}
+	id := c.Int("id")
+	if id < 0 {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
+		return
+	}
+
+	// Open data file
+	f := dataFile.New(c.String("file"))
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+	}
+	defer f.Close()
+
+	// Delete trip category
+	tcl, err := f.CategoryList()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+	tc, err := tcl.GetWithId(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+
+	err = f.CategoryDelete(tc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "%s: deleted trip category %s\n", appName, tc.Name)
 	}
 }
