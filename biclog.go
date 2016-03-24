@@ -48,7 +48,8 @@ import (
 const (
 	errSyntaxErrorInConfig = "syntax error in config file"
 	errMissingFileFlag     = "missing information about data file. Specify it with --file or -f flag"
-	errMissingNameFlag     = "missing name. Specify it with --name or -n flag"
+	errMissingTypeFlag     = "missing bicycle type. Specify it with --type or -t flag"
+	errMissingCategoryFlag = "missing trip category. Specify it with --category or -c flag"
 	errMissingIdFlag       = "missing id. Specify it with --id or -i flag"
 	errWritingToFile       = "error writing to file"
 	errReadingFromFile     = "error reading to file"
@@ -133,9 +134,10 @@ SUBCOMMANDS:
 	}
 
 	// Flags definitions
-	flagVerbose := cli.BoolFlag{Name: "verbose, b", Usage: "show more output", Destination: &verbose}
+	flagVerbose := cli.BoolFlag{Name: "verbose, v", Usage: "show more output", Destination: &verbose}
 	flagFile := cli.StringFlag{Name: "file, f", Value: dataFile, Usage: "data file"}
-	flagName := cli.StringFlag{Name: "name, n", Value: "", Usage: "name"}
+	flagType := cli.StringFlag{Name: "type, t", Value: "", Usage: "bicycle type"}
+	flagCategory := cli.StringFlag{Name: "category, c", Value: "", Usage: "trip category"}
 	flagId := cli.IntFlag{Name: "id, i", Value: -1, Usage: "ID of an object"}
 
 	// Commands
@@ -149,12 +151,12 @@ SUBCOMMANDS:
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagName},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagType},
 					Usage:   "Add new bicycle type.",
 					Action:  cmdTypeAdd},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagName},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagCategory},
 					Usage:   "Add new trip category.",
 					Action:  cmdCategoryAdd}}},
 		{Name: "list", Aliases: []string{"L"}, Usage: "List objects (bicycles, bicycle types, trips, trips categories)",
@@ -173,12 +175,12 @@ SUBCOMMANDS:
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagName},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagType},
 					Usage:   "Edit bicycle type with given id.",
 					Action:  cmdTypeEdit},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagName},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagCategory},
 					Usage:   "Edit trip category with given id.",
 					Action:  cmdCategoryEdit}}},
 		{Name: "delete", Aliases: []string{"D"}, Usage: "Delete an object (bicycle, bicycle type, trip, trip category)",
@@ -264,8 +266,8 @@ func cmdTypeAdd(c *cli.Context) {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
-	if c.String("name") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
+	if c.String("type") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingTypeFlag)
 		return
 	}
 
@@ -279,7 +281,7 @@ func cmdTypeAdd(c *cli.Context) {
 	defer f.Close()
 
 	// Add new type
-	sqlAddType := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", c.String("name"))
+	sqlAddType := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", c.String("type"))
 	_, err = f.Handler.Exec(sqlAddType)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
@@ -288,7 +290,7 @@ func cmdTypeAdd(c *cli.Context) {
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: added new bicycle type: %s\n", appName, c.String("name"))
+		fmt.Fprintf(os.Stdout, "%s: added new bicycle type: %s\n", appName, c.String("type"))
 	}
 
 }
@@ -354,9 +356,9 @@ func cmdTypeEdit(c *cli.Context) {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
 		return
 	}
-	newName := c.String("name")
+	newName := c.String("type")
 	if newName == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingTypeFlag)
 		return
 	}
 
@@ -430,8 +432,8 @@ func cmdCategoryAdd(c *cli.Context) {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
 		return
 	}
-	if c.String("name") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
+	if c.String("category") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingCategoryFlag)
 		return
 	}
 
@@ -445,16 +447,16 @@ func cmdCategoryAdd(c *cli.Context) {
 	defer f.Close()
 
 	// Add new category
-	sqlAddCategory := fmt.Sprintf("INSERT INTO trip_categories VALUES (NULL, '%s');", c.String("name"))
+	sqlAddCategory := fmt.Sprintf("INSERT INTO trip_categories VALUES (NULL, '%s');", c.String("category"))
 	_, err = f.Handler.Exec(sqlAddCategory)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
 		return
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: added new trip category: %s\n", appName, c.String("name"))
+		fmt.Fprintf(os.Stdout, "%s: added new trip category: %s\n", appName, c.String("category"))
 	}
 
 }
@@ -520,9 +522,9 @@ func cmdCategoryEdit(c *cli.Context) {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
 		return
 	}
-	newName := c.String("name")
+	newName := c.String("category")
 	if newName == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingNameFlag)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingCategoryFlag)
 		return
 	}
 
