@@ -51,10 +51,12 @@ const (
 	errMissingTypeFlag     = "missing bicycle type. Specify it with --type or -t flag"
 	errMissingCategoryFlag = "missing trip category. Specify it with --category or -c flag"
 	errMissingIdFlag       = "missing id. Specify it with --id or -i flag"
-	errWritingToFile       = "error writing to file"
-	errReadingFromFile     = "error reading to file"
-	errNoBicycleWithID     = "no bicycle with given id"
-	errNoCategoriesWithID  = "no trip categories with given id"
+	errMissingBicycleFlag  = "missing bicycle. Specify it with --bicycle or -b flag"
+
+	errWritingToFile      = "error writing to file"
+	errReadingFromFile    = "error reading to file"
+	errNoBicycleWithID    = "no bicycle with given id"
+	errNoCategoriesWithID = "no trip categories with given id"
 )
 
 // Config file settings
@@ -69,11 +71,18 @@ const (
 	objectBicycleTypeAlias  = "bt"
 	objectTripCategory      = "trip_category"
 	objectTripCategoryAlias = "tc"
+	objectBicycle           = "bicycle"
+	objectBicycleAlias      = "bc"
+)
+
+// Bicycle statuses
+const (
+	bicycleStatusOwned = iota
 )
 
 // Application internal settings
 const (
-	appName     = "bicLog"
+	appName     = "biclog"
 	fsSeparator = "  "
 )
 
@@ -139,6 +148,16 @@ SUBCOMMANDS:
 	flagType := cli.StringFlag{Name: "type, t", Value: "", Usage: "bicycle type"}
 	flagCategory := cli.StringFlag{Name: "category, c", Value: "", Usage: "trip category"}
 	flagId := cli.IntFlag{Name: "id, i", Value: -1, Usage: "ID of an object"}
+	flagBicycle := cli.StringFlag{Name: "bicycle, b", Value: "", Usage: "bicycle name"}
+	flagManufacturer := cli.StringFlag{Name: "manufacturer", Value: "", Usage: "bicycle manufacturer"}
+	flagModel := cli.StringFlag{Name: "model", Value: "", Usage: "bicycle model"}
+	flagProductionYear := cli.IntFlag{Name: "year", Value: 0, Usage: "year when the bike was made"}
+	flagBuyingDate := cli.StringFlag{Name: "bought", Value: "", Usage: "date when the bike was bought"}
+	flagDescription := cli.StringFlag{Name: "description, d", Value: "", Usage: "more verbose description"}
+	flagSize := cli.StringFlag{Name: "size", Value: "", Usage: "size of the bike"}
+	flagWeight := cli.Float64Flag{Name: "weight", Value: 0, Usage: "bike's weight"}
+	flagInitialDistance := cli.Float64Flag{Name: "init_distance", Value: 0, Usage: "initial distance of the bike"}
+	flagSeries := cli.StringFlag{Name: "series", Value: "", Usage: "series number"}
 
 	// Commands
 	app.Commands = []cli.Command{
@@ -158,7 +177,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagCategory},
 					Usage:   "Add new trip category.",
-					Action:  cmdCategoryAdd}}},
+					Action:  cmdCategoryAdd},
+				{Name: objectBicycle,
+					Aliases: []string{objectBicycleAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagSize, flagWeight, flagInitialDistance, flagSeries},
+					Usage:   "Add new bicycle.",
+					Action:  cmdBicycleAdd}}},
 		{Name: "list", Aliases: []string{"L"}, Usage: "List objects (bicycles, bicycle types, trips, trips categories)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
@@ -590,4 +614,91 @@ func cmdCategoryDelete(c *cli.Context) {
 	if c.Bool("verbose") == true {
 		fmt.Fprintf(os.Stdout, "%s: deleted trip category with id = %d\n", appName, id)
 	}
+}
+
+func cmdBicycleAdd(c *cli.Context) {
+	// Check obligatory flags (file, bicycle, bicycle type)
+	if c.String("file") == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
+		return
+	}
+	bName := c.String("bicycle")
+	if bName == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingBicycleFlag)
+		return
+	}
+	bType := c.String("type")
+	if bType == "" {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingTypeFlag)
+		return
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		return
+	}
+	defer f.Close()
+
+	// Add new bicycle
+	bTypeId, err := getBicycleTypeIDForName(bType)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", err)
+		return
+	}
+	sqlAddBicycle := fmt.Sprintf("BEGIN TRANSACTION;INSERT INTO bicycles (id, name, bicycle_type_id) VALUES (NULL, '%s', %d);", bName, bTypeId)
+	bManufacturer := c.String("manufacturer")
+	if bManufacturer != "" {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET producer='%s' WHERE id=last_insert_rowid();", bManufacturer)
+	}
+	bModel := c.String("model")
+	if bModel != "" {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET model='%s' WHERE id=last_insert_rowid();", bModel)
+	}
+	bYear := c.Int("year")
+	if bYear != 0 {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET production_year=%d WHERE id=last_insert_rowid();", bYear)
+	}
+	bBought := c.String("bought")
+	if bBought != "" {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET buying_date='%s' WHERE id=last_insert_rowid();", bBought)
+	}
+	bDesc := c.String("description")
+	if bDesc != "" {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET description='%s' WHERE id=last_insert_rowid();", bDesc)
+	}
+	bSize := c.String("size")
+	if bSize != "" {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET size='%s' WHERE id=last_insert_rowid();", bSize)
+	}
+	bWeight := c.Float64("weight")
+	if bWeight != 0 {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET weight=%f WHERE id=last_insert_rowid();", bWeight)
+	}
+	bIDist := c.Float64("init_distance")
+	if bIDist != 0 {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET initial_distance=%f WHERE id=last_insert_rowid();", bIDist)
+	}
+	bSeries := c.String("series")
+	if bSeries != "" {
+		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=last_insert_rowid();", bSeries)
+	}
+	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatusOwned)
+	_, err = f.Handler.Exec(sqlAddBicycle)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
+		return
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		fmt.Fprintf(os.Stdout, "%s: added new bicycle: %s\n", appName, bName)
+	}
+}
+
+func getBicycleTypeIDForName(n string) (int, error) {
+	//TODO: function getBicycleTypeIDForName
+	return 1,nil
 }
