@@ -15,7 +15,7 @@
 //DONE: command - category list
 //DONE: command - category edit
 //DONE: command - category delete
-//TODO: command - bicycle add
+//DONE: command - bicycle add
 //TODO: command - bicycle list
 //TODO: command - bicycle edit
 //TODO: command - bicycle delete
@@ -33,6 +33,8 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/zbroju/gprops"
@@ -53,10 +55,12 @@ const (
 	errMissingIdFlag       = "missing id. Specify it with --id or -i flag"
 	errMissingBicycleFlag  = "missing bicycle. Specify it with --bicycle or -b flag"
 
-	errWritingToFile      = "error writing to file"
-	errReadingFromFile    = "error reading to file"
-	errNoBicycleWithID    = "no bicycle with given id"
-	errNoCategoriesWithID = "no trip categories with given id"
+	errWritingToFile              = "error writing to file"
+	errReadingFromFile            = "error reading to file"
+	errNoBicycleWithID            = "no bicycle with given id"
+	errNoCategoriesWithID         = "no trip categories with given id"
+	errNoBicycleTypesForName      = "no bicycle types for given name"
+	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
 )
 
 // Config file settings
@@ -643,9 +647,9 @@ func cmdBicycleAdd(c *cli.Context) {
 	defer f.Close()
 
 	// Add new bicycle
-	bTypeId, err := getBicycleTypeIDForName(bType)
+	bTypeId, err := bicycleTypeIDForName(f.Handler, bType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", err)
+		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
 		return
 	}
 	sqlAddBicycle := fmt.Sprintf("BEGIN TRANSACTION;INSERT INTO bicycles (id, name, bicycle_type_id) VALUES (NULL, '%s', %d);", bName, bTypeId)
@@ -698,7 +702,28 @@ func cmdBicycleAdd(c *cli.Context) {
 	}
 }
 
-func getBicycleTypeIDForName(n string) (int, error) {
-	//TODO: function getBicycleTypeIDForName
-	return 1,nil
+func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
+	// Find all IDs of types that match 'n'
+	sqlGetIdQuery := fmt.Sprintf("SELECT id FROM bicycle_types WHERE name LIKE '%%%s%%';", n)
+	rows, err := db.Query(sqlGetIdQuery)
+	if err != nil {
+		return -1, errors.New(errReadingFromFile)
+	}
+	defer rows.Close()
+
+	var id int = -1
+	var i int = 0
+	for rows.Next() {
+		rows.Scan(&id)
+		i++
+	}
+
+	switch i {
+	case 0:
+		return id, errors.New(errNoBicycleTypesForName)
+	case 1:
+		return id, nil
+	default:
+		return id, errors.New(errBicycleTypeNameIsAmbiguous)
+	}
 }
