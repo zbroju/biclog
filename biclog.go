@@ -2,7 +2,8 @@
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
 //
-// TASKS:
+//TASKS:
+//TODO: change communication to 'log' library
 //DONE: create scheme of DB
 //DONE: config - data file name
 //DONE: command - init data file
@@ -20,7 +21,6 @@
 //TODO: command - bicycle edit
 //TODO: command - bicycle delete
 //TODO: command - bicycle show details
-//TODO: command - bicycle show photo
 //TODO: command - trip add
 //TODO: command - trip list
 //TODO: command - trip edit
@@ -39,6 +39,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/zbroju/gprops"
 	"github.com/zbroju/gsqlitehandler"
+	"log"
 	"os"
 	"path"
 	"strconv"
@@ -81,13 +82,22 @@ const (
 
 // Bicycle statuses
 const (
-	bicycleStatusOwned = iota
+	bicycleStatusOwned = 1
+	//bicycleStatusSold     = 2
+	//bicycleStatusStolen   = 3
+	//bicycleStatusScrapped = 4
 )
 
 // Application internal settings
 const (
 	appName     = "biclog"
 	fsSeparator = "  "
+)
+
+// Logger
+var (
+	printUserMsg *log.Logger
+	printError   *log.Logger
 )
 
 // Headers titles
@@ -105,6 +115,27 @@ var dataFileProperties = map[string]string{
 }
 
 func main() {
+	// Set up logger
+	printUserMsg = log.New(os.Stdout, fmt.Sprintf("%s: ", appName), log.LstdFlags)
+	printError = log.New(os.Stderr, fmt.Sprintf("%s: ", appName), log.LstdFlags)
+
+	// Loading properties from config file if exists
+	configSettings := gprops.New()
+	configFile, err := os.Open(path.Join(os.Getenv("HOME"), ".blrc"))
+	if err == nil {
+		err = configSettings.Load(configFile)
+		if err != nil {
+			printError.Fatalln(errSyntaxErrorInConfig)
+		}
+	}
+	configFile.Close()
+	dataFile := configSettings.GetOrDefault(confDataFile, "")
+	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(confVerbose, "false"))
+	if err != nil {
+		verbose = false
+	}
+
+	// Parse user commands and flags
 	cli.CommandHelpTemplate = `
 NAME:
    {{.HelpName}} - {{.Usage}}
@@ -120,24 +151,6 @@ SUBCOMMANDS:
 {{end}}{{ end }}
 `
 
-	// Loading properties from config file if exists
-	configSettings := gprops.New()
-	configFile, err := os.Open(path.Join(os.Getenv("HOME"), ".blrc"))
-	if err == nil {
-		err = configSettings.Load(configFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errSyntaxErrorInConfig)
-			return
-		}
-	}
-	configFile.Close()
-	dataFile := configSettings.GetOrDefault(confDataFile, "")
-	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(confVerbose, "false"))
-	if err != nil {
-		verbose = false
-	}
-
-	// Commandline arguments
 	app := cli.NewApp()
 	app.Name = appName
 	app.Usage = "keeps track of you bike rides"
@@ -146,7 +159,6 @@ SUBCOMMANDS:
 		cli.Author{"Marcin 'Zbroju' Zbroinski", "marcin@zbroinski.net"},
 	}
 
-	// Flags definitions
 	flagVerbose := cli.BoolFlag{Name: "verbose, v", Usage: "show more output", Destination: &verbose}
 	flagFile := cli.StringFlag{Name: "file, f", Value: dataFile, Usage: "data file"}
 	flagType := cli.StringFlag{Name: "type, t", Value: "", Usage: "bicycle type"}
@@ -163,7 +175,6 @@ SUBCOMMANDS:
 	flagInitialDistance := cli.Float64Flag{Name: "init_distance", Value: 0, Usage: "initial distance of the bike"}
 	flagSeries := cli.StringFlag{Name: "series", Value: "", Usage: "series number"}
 
-	// Commands
 	app.Commands = []cli.Command{
 		{Name: "init",
 			Aliases: []string{"I"},
@@ -229,8 +240,7 @@ SUBCOMMANDS:
 func cmdInit(c *cli.Context) {
 	// Check the obligatory parameters and exit if missing
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 
 	// Create new file
@@ -279,32 +289,30 @@ CREATE TABLE trip_categories (
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.CreateNew(sqlCreateTables)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		printError.Fatalln(err)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: created file %s.\n", appName, c.String("file"))
+		printUserMsg.Printf("created file %s.\n", c.String("file"))
 	}
 }
 
 func cmdTypeAdd(c *cli.Context) {
 	// Check obligatory flags (file, name)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
+
 	}
 	if c.String("type") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingTypeFlag)
-		return
+		printError.Fatalln(errMissingTypeFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
-		return
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -312,30 +320,26 @@ func cmdTypeAdd(c *cli.Context) {
 	sqlAddType := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", c.String("type"))
 	_, err = f.Handler.Exec(sqlAddType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: added new bicycle type: %s\n", appName, c.String("type"))
+		printUserMsg.Printf("added new bicycle type: %s\n", c.String("type"))
 	}
-
 }
 
 func cmdTypeList(c *cli.Context) {
 	// Check obligatory flags (file)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
-		return
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -343,8 +347,7 @@ func cmdTypeList(c *cli.Context) {
 	var maxLId, maxLName int
 	err = f.Handler.QueryRow("SELECT max(length(id)), max(length(name)) FROM bicycle_types;").Scan(&maxLId, &maxLName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, "no bicycle types")
-		return
+		printError.Fatalln("no bicycle types")
 	}
 	if hlId := utf8.RuneCountInString(btIdHeader); maxLId < hlId {
 		maxLId = hlId
@@ -358,8 +361,7 @@ func cmdTypeList(c *cli.Context) {
 	// List bicycle types
 	rows, err := f.Handler.Query("SELECT id, name FROM bicycle_types ORDER BY name;")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s:  %s\n", appName, errReadingFromFile)
-		return
+		printError.Fatalln(errReadingFromFile)
 	}
 	defer rows.Close()
 
@@ -376,25 +378,22 @@ func cmdTypeList(c *cli.Context) {
 func cmdTypeEdit(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
 	if id < 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
-		return
+		printError.Fatalln(errMissingIdFlag)
 	}
 	newName := c.String("type")
 	if newName == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingTypeFlag)
-		return
+		printError.Fatalln(errMissingTypeFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -402,37 +401,33 @@ func cmdTypeEdit(c *cli.Context) {
 	sqlUpdateType := fmt.Sprintf("UPDATE bicycle_types SET name='%s' WHERE id=%d;", newName, id)
 	r, err := f.Handler.Exec(sqlUpdateType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errNoBicycleWithID)
-		return
+		printError.Fatalln(errNoBicycleWithID)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: change bicycle type name to '%s'\n", appName, newName)
+		printUserMsg.Printf("change bicycle type name to '%s'\n", newName)
 	}
 }
 
 func cmdTypeDelete(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
 	if id < 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
-		return
+		printError.Fatalln(errMissingIdFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -440,37 +435,32 @@ func cmdTypeDelete(c *cli.Context) {
 	sqlDeleteType := fmt.Sprintf("DELETE FROM bicycle_types WHERE id=%d;", id)
 	r, err := f.Handler.Exec(sqlDeleteType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errNoBicycleWithID)
-		return
+		printError.Fatalln(errNoBicycleWithID)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: deleted bicycle type with id = %d\n", appName, id)
+		printUserMsg.Printf("deleted bicycle type with id = %d\n", id)
 	}
 }
 
 func cmdCategoryAdd(c *cli.Context) {
 	// Check obligatory flags (file, name)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 	if c.String("category") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingCategoryFlag)
-		return
+		printError.Fatalln(errMissingCategoryFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
-		return
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -478,30 +468,26 @@ func cmdCategoryAdd(c *cli.Context) {
 	sqlAddCategory := fmt.Sprintf("INSERT INTO trip_categories VALUES (NULL, '%s');", c.String("category"))
 	_, err = f.Handler.Exec(sqlAddCategory)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: added new trip category: %s\n", appName, c.String("category"))
+		printUserMsg.Printf("added new trip category: %s\n", c.String("category"))
 	}
-
 }
 
 func cmdCategoryList(c *cli.Context) {
 	// Check obligatory flags (file)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
-		return
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -509,8 +495,7 @@ func cmdCategoryList(c *cli.Context) {
 	var maxLId, maxLName int
 	err = f.Handler.QueryRow("SELECT max(length(id)), max(length(name)) FROM trip_categories;").Scan(&maxLId, &maxLName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, "no trip categories")
-		return
+		printError.Fatalln("no trip categories")
 	}
 	if hlId := utf8.RuneCountInString(tcIdHeader); maxLId < hlId {
 		maxLId = hlId
@@ -524,8 +509,7 @@ func cmdCategoryList(c *cli.Context) {
 	// List trip categories
 	rows, err := f.Handler.Query("SELECT id, name FROM trip_categories ORDER BY name;")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s:  %s\n", appName, errReadingFromFile)
-		return
+		printError.Fatalln(errReadingFromFile)
 	}
 	defer rows.Close()
 
@@ -542,25 +526,22 @@ func cmdCategoryList(c *cli.Context) {
 func cmdCategoryEdit(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
 	if id < 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
-		return
+		printError.Fatalln(errMissingIdFlag)
 	}
 	newName := c.String("category")
 	if newName == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingCategoryFlag)
-		return
+		printError.Fatalln(errMissingCategoryFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -568,37 +549,33 @@ func cmdCategoryEdit(c *cli.Context) {
 	sqlUpdateCategory := fmt.Sprintf("UPDATE trip_categories SET name='%s' WHERE id=%d;", newName, id)
 	r, err := f.Handler.Exec(sqlUpdateCategory)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errNoCategoriesWithID)
-		return
+		printError.Fatalln(errNoCategoriesWithID)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: change trip category name to '%s'\n", appName, newName)
+		printUserMsg.Printf("change trip category name to '%s'\n", newName)
 	}
 }
 
 func cmdCategoryDelete(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
 	if id < 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingIdFlag)
-		return
+		printError.Fatalln(errMissingIdFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
@@ -606,51 +583,44 @@ func cmdCategoryDelete(c *cli.Context) {
 	sqlDeleteCategory := fmt.Sprintf("DELETE FROM trip_categories WHERE id=%d;", id)
 	r, err := f.Handler.Exec(sqlDeleteCategory)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errNoCategoriesWithID)
-		return
+		printError.Fatalln(errNoCategoriesWithID)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: deleted trip category with id = %d\n", appName, id)
+		printUserMsg.Printf("deleted trip category with id = %d\n", id)
 	}
 }
 
 func cmdBicycleAdd(c *cli.Context) {
 	// Check obligatory flags (file, bicycle, bicycle type)
 	if c.String("file") == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingFileFlag)
-		return
+		printError.Fatalln(errMissingFileFlag)
 	}
 	bName := c.String("bicycle")
 	if bName == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingBicycleFlag)
-		return
+		printError.Fatalln(errMissingBicycleFlag)
 	}
 	bType := c.String("type")
 	if bType == "" {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errMissingTypeFlag)
-		return
+		printError.Fatalln(errMissingTypeFlag)
 	}
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
 	err := f.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
-		return
+		printError.Fatalln(err)
 	}
 	defer f.Close()
 
 	// Add new bicycle
 	bTypeId, err := bicycleTypeIDForName(f.Handler, bType)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, err)
-		return
+		printError.Fatalln(err)
 	}
 	sqlAddBicycle := fmt.Sprintf("BEGIN TRANSACTION;INSERT INTO bicycles (id, name, bicycle_type_id) VALUES (NULL, '%s', %d);", bName, bTypeId)
 	bManufacturer := c.String("manufacturer")
@@ -692,26 +662,26 @@ func cmdBicycleAdd(c *cli.Context) {
 	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatusOwned)
 	_, err = f.Handler.Exec(sqlAddBicycle)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %s\n", appName, errWritingToFile)
-		return
+		printError.Fatalln(errWritingToFile)
 	}
 
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
-		fmt.Fprintf(os.Stdout, "%s: added new bicycle: %s\n", appName, bName)
+		printUserMsg.Printf("added new bicycle: %s\n", bName)
 	}
 }
 
 func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
-	// Find all IDs of types that match 'n'
+	var id int = -1
+
+	// Find all IDs of types that match '*n*'
 	sqlGetIdQuery := fmt.Sprintf("SELECT id FROM bicycle_types WHERE name LIKE '%%%s%%';", n)
 	rows, err := db.Query(sqlGetIdQuery)
 	if err != nil {
-		return -1, errors.New(errReadingFromFile)
+		return id, errors.New(errReadingFromFile)
 	}
 	defer rows.Close()
 
-	var id int = -1
 	var i int = 0
 	for rows.Next() {
 		rows.Scan(&id)
