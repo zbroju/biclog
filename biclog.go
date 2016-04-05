@@ -3,7 +3,7 @@
 // that can be found in the LICENSE file.
 //
 //TASKS:
-//TODO: change communication to 'log' library
+//DONE: change communication to 'log' library
 //DONE: create scheme of DB
 //DONE: config - data file name
 //DONE: command - init data file
@@ -104,8 +104,22 @@ var (
 const (
 	btIdHeader   = "ID"
 	btNameHeader = "B.TYPE"
+
 	tcIdHeader   = "ID"
 	tcNameHeader = "T.CATEGORY"
+
+	bcIdHeader          = "ID"
+	bcNameHeader        = "B.NAME"
+	bcProducerHeader    = "PRODUCER"
+	bcModelHeader       = "MODEL"
+	bcProdYearHeader    = "PROD.YEAR"
+	bcBuyingDateHeader  = "BUY.DATE"
+	bdDescriptionHeader = "DESCRIPTION"
+	bcStatusHeader      = "STATUS"
+	bcSizeHeader        = "SIZE"
+	bcWeightHeader      = "WEIGHT"
+	bcInitDistHeader    = "INIT DIST."
+	bcSeriesHeader      = "SERIES"
 )
 
 // DB Properties
@@ -116,8 +130,8 @@ var dataFileProperties = map[string]string{
 
 func main() {
 	// Set up logger
-	printUserMsg = log.New(os.Stdout, fmt.Sprintf("%s: ", appName), log.LstdFlags)
-	printError = log.New(os.Stderr, fmt.Sprintf("%s: ", appName), log.LstdFlags)
+	printUserMsg = log.New(os.Stdout, fmt.Sprintf("%s: ", appName), 0)
+	printError = log.New(os.Stderr, fmt.Sprintf("%s: ", appName), 0)
 
 	// Loading properties from config file if exists
 	configSettings := gprops.New()
@@ -209,7 +223,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile},
 					Usage:   "List available trip categories.",
-					Action:  cmdCategoryList}}},
+					Action:  cmdCategoryList},
+				{Name: objectBicycle,
+					Aliases: []string{objectBicycleAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Usage:   "List available bicycles.",
+					Action:  cmdBicycleList}}},
 		{Name: "edit", Aliases: []string{"E"}, Usage: "Edit an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
@@ -668,6 +687,67 @@ func cmdBicycleAdd(c *cli.Context) {
 	// Show summary if verbose
 	if c.Bool("verbose") == true {
 		printUserMsg.Printf("added new bicycle: %s\n", bName)
+	}
+}
+
+func cmdBicycleList(c *cli.Context) {
+	// Check obligatory flags (file)
+	if c.String("file") == "" {
+		printError.Fatalln(errMissingFileFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Create formatting strings
+	var lId, lName, lProducer, lModel, lType int
+	maxQuery := fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusOwned)
+	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lName, &lProducer, &lModel, &lType)
+	if err != nil {
+		printError.Fatalln(err)
+		printError.Fatalln("no bicycles")
+	}
+	if hl := utf8.RuneCountInString(bcIdHeader); lId < hl {
+		lId = hl
+	}
+	if hl := utf8.RuneCountInString(bcNameHeader); lName < hl {
+		lName = hl
+	}
+	if hl := utf8.RuneCountInString(bcProducerHeader); lProducer < hl {
+		lProducer = hl
+	}
+	if hl := utf8.RuneCountInString(bcModelHeader); lModel < hl {
+		lModel = hl
+	}
+	if hl := utf8.RuneCountInString(btNameHeader); lType < hl {
+		lType = hl
+	}
+	fmtStrings := make(map[string]string)
+	fmtStrings["id"] = fmt.Sprintf("%%%dv", lId)
+	fmtStrings["name"] = fmt.Sprintf("%%-%dv", lName)
+	fmtStrings["producer"] = fmt.Sprintf("%%-%dv", lProducer)
+	fmtStrings["model"] = fmt.Sprintf("%%-%dv", lModel)
+	fmtStrings["type"] = fmt.Sprintf("%%-%dv", lType)
+
+	// List bicycles
+	rows, err := f.Handler.Query(fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusOwned))
+	if err != nil {
+		printError.Fatalln(errReadingFromFile)
+	}
+	defer rows.Close()
+	line := strings.Join([]string{fmtStrings["id"], fmtStrings["name"], fmtStrings["producer"], fmtStrings["model"], fmtStrings["type"]}, fsSeparator) + "\n"
+	fmt.Fprintf(os.Stdout, line, bcIdHeader, bcNameHeader, bcProducerHeader, bcModelHeader, btNameHeader)
+
+	for rows.Next() {
+		var id int
+		var name, producer, model, bicType string
+		rows.Scan(&id, &name, &producer, &model, &bicType)
+		fmt.Fprintf(os.Stdout, line, id, name, producer, model, bicType)
 	}
 }
 
