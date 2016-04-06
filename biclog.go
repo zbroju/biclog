@@ -17,9 +17,9 @@
 //DONE: command - category edit
 //DONE: command - category delete
 //DONE: command - bicycle add
-//TODO: command - bicycle list
-//TODO: command - bicycle edit
-//TODO: command - bicycle delete
+//DONE: command - bicycle list
+//TODO: command - bicycle edit (remember about changing status to scrapped, sold and stolen)
+//DONE: command - bicycle delete
 //TODO: command - bicycle show details
 //TODO: command - trip add
 //TODO: command - trip list
@@ -59,9 +59,12 @@ const (
 	errWritingToFile              = "error writing to file"
 	errReadingFromFile            = "error reading to file"
 	errNoBicycleWithID            = "no bicycle with given id"
+	errNoBicycleTypeWithID        = "no bicycle type with given id"
 	errNoCategoriesWithID         = "no trip categories with given id"
 	errNoBicycleTypesForName      = "no bicycle types for given name"
 	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
+
+	errCannotRemoveBicycle = "cannot remove bicycle because there are trips on it"
 )
 
 // Config file settings
@@ -82,10 +85,8 @@ const (
 
 // Bicycle statuses
 const (
-	bicycleStatusOwned = 1
-	//bicycleStatusSold     = 2
-	//bicycleStatusStolen   = 3
-	//bicycleStatusScrapped = 4
+	bicycleStatusActive  = 1
+	bicycleStatusRemoved = 0
 )
 
 // Application internal settings
@@ -127,6 +128,10 @@ var dataFileProperties = map[string]string{
 	"applicationName": "gBicLog",
 	"databaseVersion": "1.0",
 }
+
+// *************
+// MAIN FUNCTION
+// *************
 
 func main() {
 	// Set up logger
@@ -252,9 +257,18 @@ SUBCOMMANDS:
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
 					Usage:   "Delete trip category with given id.",
-					Action:  cmdCategoryDelete}}}}
+					Action:  cmdCategoryDelete},
+				{Name: objectBicycle,
+					Aliases: []string{objectBicycleAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Usage:   "Delete bicycle with given id.",
+					Action:  cmdBicycleDelete}}}}
 	app.Run(os.Args)
 }
+
+// ********
+// Commands
+// ********
 
 func cmdInit(c *cli.Context) {
 	// Check the obligatory parameters and exit if missing
@@ -450,6 +464,8 @@ func cmdTypeDelete(c *cli.Context) {
 	}
 	defer f.Close()
 
+	//TODO: check if it is possible to remove (separate function - no bicycles of that type)
+
 	// Delete bicycle type
 	sqlDeleteType := fmt.Sprintf("DELETE FROM bicycle_types WHERE id=%d;", id)
 	r, err := f.Handler.Exec(sqlDeleteType)
@@ -457,7 +473,7 @@ func cmdTypeDelete(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		printError.Fatalln(errNoBicycleWithID)
+		printError.Fatalln(errNoBicycleTypeWithID)
 	}
 
 	// Show summary if verbose
@@ -597,7 +613,7 @@ func cmdCategoryDelete(c *cli.Context) {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
-
+	//TODO: check if possible - separate function to check if no trips of that category exist
 	// Delete trip category
 	sqlDeleteCategory := fmt.Sprintf("DELETE FROM trip_categories WHERE id=%d;", id)
 	r, err := f.Handler.Exec(sqlDeleteCategory)
@@ -678,7 +694,7 @@ func cmdBicycleAdd(c *cli.Context) {
 	if bSeries != "" {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=last_insert_rowid();", bSeries)
 	}
-	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatusOwned)
+	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatusActive)
 	_, err = f.Handler.Exec(sqlAddBicycle)
 	if err != nil {
 		printError.Fatalln(errWritingToFile)
@@ -706,10 +722,9 @@ func cmdBicycleList(c *cli.Context) {
 
 	// Create formatting strings
 	var lId, lName, lProducer, lModel, lType int
-	maxQuery := fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusOwned)
+	maxQuery := fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusActive)
 	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lName, &lProducer, &lModel, &lType)
 	if err != nil {
-		printError.Fatalln(err)
 		printError.Fatalln("no bicycles")
 	}
 	if hl := utf8.RuneCountInString(bcIdHeader); lId < hl {
@@ -735,7 +750,7 @@ func cmdBicycleList(c *cli.Context) {
 	fmtStrings["type"] = fmt.Sprintf("%%-%dv", lType)
 
 	// List bicycles
-	rows, err := f.Handler.Query(fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusOwned))
+	rows, err := f.Handler.Query(fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusActive))
 	if err != nil {
 		printError.Fatalln(errReadingFromFile)
 	}
@@ -751,6 +766,51 @@ func cmdBicycleList(c *cli.Context) {
 	}
 }
 
+func cmdBicycleDelete(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == "" {
+		printError.Fatalln(errMissingFileFlag)
+	}
+	id := c.Int("id")
+	if id < 0 {
+		printError.Fatalln(errMissingIdFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	if bicyclePossibleToDelete(f.Handler, id) == false {
+		printError.Fatalln(errCannotRemoveBicycle)
+	}
+
+	// Delete bicycle type
+	sqlDeleteBicycle := fmt.Sprintf("DELETE FROM bicycles WHERE id=%d;", id)
+	r, err := f.Handler.Exec(sqlDeleteBicycle)
+	if err != nil {
+		printError.Fatalln(errWritingToFile)
+	}
+	if i, _ := r.RowsAffected(); i == 0 {
+		printError.Fatalln(errNoBicycleWithID)
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		printUserMsg.Printf("deleted bicycle with id = %d\n", id)
+	}
+}
+
+// ********************
+// Supportive Functions
+// ********************
+
+// bicycleTypeIDForName returns bicycle type id for a given (part of) name.
+// db - SQL database handler
+// n - bicycle name, or part of its name
 func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
 	var id int = -1
 
@@ -776,4 +836,26 @@ func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
 	default:
 		return id, errors.New(errBicycleTypeNameIsAmbiguous)
 	}
+}
+
+// bicyclePossibleToDelete returns false if there is any trip done on a bicycle with given ID.
+// db - SQL databse handler
+// id - bicycle ID
+func bicyclePossibleToDelete(db *sql.DB, id int) bool {
+	var n int
+
+	// Check how many trips are done on this bicycle
+	nQuery := fmt.Sprintf("SELECT count(id) FROM trips WHERE bicycle_id=%d;", id)
+	err := db.QueryRow(nQuery).Scan(&n)
+	if err != nil {
+		return false
+	}
+
+	// If there is any trip done on this bike - return false
+	if n != 0 {
+		return false
+	}
+
+	return true
+
 }
