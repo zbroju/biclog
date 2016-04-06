@@ -64,7 +64,9 @@ const (
 	errNoBicycleTypesForName      = "no bicycle types for given name"
 	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
 
-	errCannotRemoveBicycle = "cannot remove bicycle because there are trips on it"
+	errCannotRemoveBicycleType = "cannot remove bicycle type because there are bicycles of this type"
+	errCannotRemoveCategory    = "cannot remove category because there are trips with this category"
+	errCannotRemoveBicycle     = "cannot remove bicycle because there are trips done on it"
 )
 
 // Config file settings
@@ -464,7 +466,10 @@ func cmdTypeDelete(c *cli.Context) {
 	}
 	defer f.Close()
 
-	//TODO: check if it is possible to remove (separate function - no bicycles of that type)
+	//Check if it is possible to safely remove the bicycle type
+	if typePossibleToDelete(f.Handler, id) == false {
+		printError.Fatalln(errCannotRemoveBicycleType)
+	}
 
 	// Delete bicycle type
 	sqlDeleteType := fmt.Sprintf("DELETE FROM bicycle_types WHERE id=%d;", id)
@@ -613,7 +618,12 @@ func cmdCategoryDelete(c *cli.Context) {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
-	//TODO: check if possible - separate function to check if no trips of that category exist
+
+	// Check if it is possible to safely remove the category
+	if categoryPossibleToDelete(f.Handler, id) == false {
+		printError.Fatalln(errCannotRemoveCategory)
+	}
+
 	// Delete trip category
 	sqlDeleteCategory := fmt.Sprintf("DELETE FROM trip_categories WHERE id=%d;", id)
 	r, err := f.Handler.Exec(sqlDeleteCategory)
@@ -784,6 +794,7 @@ func cmdBicycleDelete(c *cli.Context) {
 	}
 	defer f.Close()
 
+	// Check if it is possible to safely delete the bicycle
 	if bicyclePossibleToDelete(f.Handler, id) == false {
 		printError.Fatalln(errCannotRemoveBicycle)
 	}
@@ -838,8 +849,52 @@ func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
 	}
 }
 
+// typePossibleToDelete returns false if there is any bicycle of a type with given ID.
+// db - SQL database handler
+// id - bicycle type ID
+func typePossibleToDelete(db *sql.DB, id int) bool {
+	var n int
+
+	// Check how many bicycle are of that type
+	nQuery := fmt.Sprintf("SELECT count(id) FROM bicycles WHERE bicycle_type_id=%d;", id)
+	err := db.QueryRow(nQuery).Scan(&n)
+	if err != nil {
+		return false
+	}
+
+	// If there is any bicycle of that type - return false
+	if n != 0 {
+		return false
+	}
+
+	return true
+
+}
+
+// categoryPossibleToDelete returns false if there is any trip done on a bicycle with given ID.
+// db - SQL database handler
+// id - category ID
+func categoryPossibleToDelete(db *sql.DB, id int) bool {
+	var n int
+
+	// Check how many trips are classified with this category
+	nQuery := fmt.Sprintf("SELECT count(id) FROM trips WHERE trip_category_id=%d;", id)
+	err := db.QueryRow(nQuery).Scan(&n)
+	if err != nil {
+		return false
+	}
+
+	// If there is any trip classified with this category - return false
+	if n != 0 {
+		return false
+	}
+
+	return true
+
+}
+
 // bicyclePossibleToDelete returns false if there is any trip done on a bicycle with given ID.
-// db - SQL databse handler
+// db - SQL database handler
 // id - bicycle ID
 func bicyclePossibleToDelete(db *sql.DB, id int) bool {
 	var n int
