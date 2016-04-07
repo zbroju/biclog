@@ -18,7 +18,7 @@
 //DONE: command - category delete
 //DONE: command - bicycle add
 //DONE: command - bicycle list
-//TODO: command - bicycle edit (remember about changing status to scrapped, sold and stolen)
+//DONE: command - bicycle edit (remember about changing status to scrapped, sold and stolen)
 //DONE: command - bicycle delete
 //TODO: command - bicycle show details
 //TODO: command - trip add
@@ -62,6 +62,7 @@ const (
 	errNoBicycleTypeWithID        = "no bicycle type with given id"
 	errNoCategoriesWithID         = "no trip categories with given id"
 	errNoBicycleTypesForName      = "no bicycle types for given name"
+	errNoBicycleStatus            = "unknown bicycle status"
 	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
 
 	errCannotRemoveBicycleType = "cannot remove bicycle type because there are bicycles of this type"
@@ -86,10 +87,12 @@ const (
 )
 
 // Bicycle statuses
-const (
-	bicycleStatusActive  = 1
-	bicycleStatusRemoved = 0
-)
+var bicycleStatuses = map[string]int{
+	"owned":    1,
+	"sold":     2,
+	"scrapped": 3,
+	"stolen":   4,
+}
 
 // Application internal settings
 const (
@@ -191,6 +194,7 @@ SUBCOMMANDS:
 	flagProductionYear := cli.IntFlag{Name: "year", Value: 0, Usage: "year when the bike was made"}
 	flagBuyingDate := cli.StringFlag{Name: "bought", Value: "", Usage: "date when the bike was bought"}
 	flagDescription := cli.StringFlag{Name: "description, d", Value: "", Usage: "more verbose description"}
+	flagStatus := cli.StringFlag{Name: "status", Value: "", Usage: "bicycle status (owned, sold, scrapped, stolen)"}
 	flagSize := cli.StringFlag{Name: "size", Value: "", Usage: "size of the bike"}
 	flagWeight := cli.Float64Flag{Name: "weight", Value: 0, Usage: "bike's weight"}
 	flagInitialDistance := cli.Float64Flag{Name: "init_distance", Value: 0, Usage: "initial distance of the bike"}
@@ -247,7 +251,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagCategory},
 					Usage:   "Edit trip category with given id.",
-					Action:  cmdCategoryEdit}}},
+					Action:  cmdCategoryEdit},
+				{Name: objectBicycle,
+					Aliases: []string{objectBicycleAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
+					Usage:   "Edit bicycle details.",
+					Action:  cmdBicycleEdit}}},
 		{Name: "delete", Aliases: []string{"D"}, Usage: "Delete an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
@@ -704,7 +713,8 @@ func cmdBicycleAdd(c *cli.Context) {
 	if bSeries != "" {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=last_insert_rowid();", bSeries)
 	}
-	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatusActive)
+	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatuses["owned"])
+	//TODO: change possibility to add status and if missing set by default to owned
 	_, err = f.Handler.Exec(sqlAddBicycle)
 	if err != nil {
 		printError.Fatalln(errWritingToFile)
@@ -732,7 +742,8 @@ func cmdBicycleList(c *cli.Context) {
 
 	// Create formatting strings
 	var lId, lName, lProducer, lModel, lType int
-	maxQuery := fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusActive)
+	maxQuery := fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"])
+	//TODO: add condition that if flag --all then all bicycles are listed
 	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lName, &lProducer, &lModel, &lType)
 	if err != nil {
 		printError.Fatalln("no bicycles")
@@ -760,7 +771,7 @@ func cmdBicycleList(c *cli.Context) {
 	fmtStrings["type"] = fmt.Sprintf("%%-%dv", lType)
 
 	// List bicycles
-	rows, err := f.Handler.Query(fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatusActive))
+	rows, err := f.Handler.Query(fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"]))
 	if err != nil {
 		printError.Fatalln(errReadingFromFile)
 	}
@@ -773,6 +784,97 @@ func cmdBicycleList(c *cli.Context) {
 		var name, producer, model, bicType string
 		rows.Scan(&id, &name, &producer, &model, &bicType)
 		fmt.Fprintf(os.Stdout, line, id, name, producer, model, bicType)
+	}
+}
+
+func cmdBicycleEdit(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == "" {
+		printError.Fatalln(errMissingFileFlag)
+	}
+	id := c.Int("id")
+	if id < 0 {
+		printError.Fatalln(errMissingIdFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Edit bicycle
+	sqlUpdateBicycle := fmt.Sprintf("BEGIN TRANSACTION;")
+	bType := c.String("type")
+	if bType != "" {
+		bTypeId, err := bicycleTypeIDForName(f.Handler, bType)
+		if err != nil {
+			printError.Fatalln(err)
+		}
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET bicycle_type_id=%d WHERE id=%d;", bTypeId, id)
+	}
+	bStatus := c.String("status")
+	if bStatus != "" {
+		bStatusId, err := bicycleStatusNoForName(bStatus)
+		if err != nil {
+			printError.Fatalln(err)
+		}
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=%d;", bStatusId, id)
+	}
+	bName := c.String("bicycle")
+	if bName != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET name=%s WHERE id=%d;", bName, id)
+	}
+	bManufacturer := c.String("manufacturer")
+	if bManufacturer != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET producer='%s' WHERE id=%d;", bManufacturer, id)
+	}
+	bModel := c.String("model")
+	if bModel != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET model='%s' WHERE id=%d;", bModel, id)
+	}
+	bYear := c.Int("year")
+	if bYear != 0 {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET production_year=%d WHERE id=%d;", bYear, id)
+	}
+	bBought := c.String("bought")
+	if bBought != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET buying_date='%s' WHERE id=%d;", bBought, id)
+	}
+	bDesc := c.String("description")
+	if bDesc != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET description='%s' WHERE id=%d;", bDesc, id)
+	}
+	bSize := c.String("size")
+	if bSize != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET size='%s' WHERE id=%d;", bSize, id)
+	}
+	bWeight := c.Float64("weight")
+	if bWeight != 0 {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET weight=%f WHERE id=%d;", bWeight, id)
+	}
+	bIDist := c.Float64("init_distance")
+	if bIDist != 0 {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET initial_distance=%f WHERE id=%d;", bIDist, id)
+	}
+	bSeries := c.String("series")
+	if bSeries != "" {
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=%d;", bSeries, id)
+	}
+	sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("COMMIT;")
+	r, err := f.Handler.Exec(sqlUpdateBicycle)
+	if err != nil {
+		printError.Fatalln(errWritingToFile)
+	}
+	if i, _ := r.RowsAffected(); i == 0 {
+		printError.Fatalln(errNoBicycleWithID)
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		printUserMsg.Printf("changed bicycle details\n")
 	}
 }
 
@@ -913,4 +1015,18 @@ func bicyclePossibleToDelete(db *sql.DB, id int) bool {
 
 	return true
 
+}
+
+// bicycleStatusNoForName returns status id for given (part of) status name
+// n - (part of) status name
+func bicycleStatusNoForName(n string) (int, error) {
+	var val int = -1
+
+	for key, val := range bicycleStatuses {
+		if strings.Contains(key, n) {
+			return val, nil
+		}
+	}
+
+	return val, errors.New(errNoBicycleStatus)
 }
