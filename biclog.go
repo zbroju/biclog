@@ -21,7 +21,7 @@
 //DONE: command - bicycle edit (remember about changing status to scrapped, sold and stolen)
 //DONE: command - bicycle delete
 //TODO: command - bicycle show details
-//TODO: command - trip add
+//DONE: command - trip add
 //TODO: command - trip list
 //TODO: command - trip edit
 //TODO: command - trip delete
@@ -44,6 +44,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -55,15 +56,21 @@ const (
 	errMissingCategoryFlag = "missing trip category. Specify it with --category or -c flag"
 	errMissingIdFlag       = "missing id. Specify it with --id or -i flag"
 	errMissingBicycleFlag  = "missing bicycle. Specify it with --bicycle or -b flag"
+	errMissingTitleFlag    = "missing trip title. Specify it with --title or -s flag"
+	errMissingDistanceFlag = "missing trip distance. Specify it with --distance or -d flag"
 
 	errWritingToFile              = "error writing to file"
 	errReadingFromFile            = "error reading to file"
 	errNoBicycleWithID            = "no bicycle with given id"
+	errNoBicycleForName           = "no bicycle for given name"
+	errBicycleNameisAmbiguous     = "bicycle name is ambiguous"
 	errNoBicycleTypeWithID        = "no bicycle type with given id"
-	errNoCategoriesWithID         = "no trip categories with given id"
+	errNoCategoryWithID           = "no trip categories with given id"
+	errNoCategoryForName          = "no trip category for given name"
 	errNoBicycleTypesForName      = "no bicycle types for given name"
 	errNoBicycleStatus            = "unknown bicycle status"
 	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
+	errCategoryNameIsAmbiguous    = "given trip category name is ambiguous"
 
 	errCannotRemoveBicycleType = "cannot remove bicycle type because there are bicycles of this type"
 	errCannotRemoveCategory    = "cannot remove category because there are trips with this category"
@@ -84,6 +91,8 @@ const (
 	objectTripCategoryAlias = "tc"
 	objectBicycle           = "bicycle"
 	objectBicycleAlias      = "bc"
+	objectTrip              = "trip"
+	objectTripAlias         = "tr"
 )
 
 // Bicycle statuses
@@ -98,6 +107,10 @@ var bicycleStatuses = map[string]int{
 const (
 	appName     = "biclog"
 	fsSeparator = "  "
+
+	notSetIntValue    int     = -1
+	notSetFloatValue  float64 = -1
+	notSetStringValue         = ""
 )
 
 // Logger
@@ -174,6 +187,7 @@ SUBCOMMANDS:
     {{range .Subcommands}}{{join .Names ", "}}{{ "\t" }}{{.Usage}}
 {{end}}{{ end }}
 `
+	//TODO: reformat help so that no default values are shown after -h option
 
 	app := cli.NewApp()
 	app.Name = appName
@@ -185,20 +199,30 @@ SUBCOMMANDS:
 
 	flagVerbose := cli.BoolFlag{Name: "verbose, v", Usage: "show more output", Destination: &verbose}
 	flagFile := cli.StringFlag{Name: "file, f", Value: dataFile, Usage: "data file"}
-	flagType := cli.StringFlag{Name: "type, t", Value: "", Usage: "bicycle type"}
-	flagCategory := cli.StringFlag{Name: "category, c", Value: "", Usage: "trip category"}
-	flagId := cli.IntFlag{Name: "id, i", Value: -1, Usage: "ID of an object"}
-	flagBicycle := cli.StringFlag{Name: "bicycle, b", Value: "", Usage: "bicycle name"}
-	flagManufacturer := cli.StringFlag{Name: "manufacturer", Value: "", Usage: "bicycle manufacturer"}
-	flagModel := cli.StringFlag{Name: "model", Value: "", Usage: "bicycle model"}
-	flagProductionYear := cli.IntFlag{Name: "year", Value: 0, Usage: "year when the bike was made"}
-	flagBuyingDate := cli.StringFlag{Name: "bought", Value: "", Usage: "date when the bike was bought"}
-	flagDescription := cli.StringFlag{Name: "description, d", Value: "", Usage: "more verbose description"}
-	flagStatus := cli.StringFlag{Name: "status", Value: "", Usage: "bicycle status (owned, sold, scrapped, stolen)"}
-	flagSize := cli.StringFlag{Name: "size", Value: "", Usage: "size of the bike"}
-	flagWeight := cli.Float64Flag{Name: "weight", Value: 0, Usage: "bike's weight"}
-	flagInitialDistance := cli.Float64Flag{Name: "init_distance", Value: 0, Usage: "initial distance of the bike"}
-	flagSeries := cli.StringFlag{Name: "series", Value: "", Usage: "series number"}
+	flagType := cli.StringFlag{Name: "type, t", Value: notSetStringValue, Usage: "bicycle type"}
+	flagCategory := cli.StringFlag{Name: "category, c", Value: notSetStringValue, Usage: "trip category"}
+	flagId := cli.IntFlag{Name: "id, i", Value: notSetIntValue, Usage: "ID of an object"}
+	flagBicycle := cli.StringFlag{Name: "bicycle, b", Value: notSetStringValue, Usage: "bicycle name"}
+	flagManufacturer := cli.StringFlag{Name: "manufacturer", Value: notSetStringValue, Usage: "bicycle manufacturer"}
+	flagModel := cli.StringFlag{Name: "model", Value: notSetStringValue, Usage: "bicycle model"}
+	flagProductionYear := cli.IntFlag{Name: "year", Value: notSetIntValue, Usage: "year when the bike was made"}
+	flagBuyingDate := cli.StringFlag{Name: "bought", Value: notSetStringValue, Usage: "date when the bike was bought"}
+	flagDescription := cli.StringFlag{Name: "description, d", Value: notSetStringValue, Usage: "more verbose description"}
+	flagStatus := cli.StringFlag{Name: "status", Value: notSetStringValue, Usage: "bicycle status (owned, sold, scrapped, stolen)"}
+	flagSize := cli.StringFlag{Name: "size", Value: notSetStringValue, Usage: "size of the bike"}
+	flagWeight := cli.Float64Flag{Name: "weight", Value: notSetFloatValue, Usage: "bike's weight"}
+	flagInitialDistance := cli.Float64Flag{Name: "init_distance", Value: notSetFloatValue, Usage: "initial distance of the bike"}
+	flagSeries := cli.StringFlag{Name: "series", Value: notSetStringValue, Usage: "series number"}
+	flagDate := cli.StringFlag{Name: "date", Value: time.Now().Format("2006-01-02"), Usage: "date of trip (default: today)"}
+	flagTitle := cli.StringFlag{Name: "title, s", Value: notSetStringValue, Usage: "trip title"}
+	flagDistance := cli.Float64Flag{Name: "distance, r", Value: notSetFloatValue, Usage: "trip distance"}
+	flagDuration := cli.DurationFlag{Name: "duration, l", Usage: "trip duration"}
+	flagHRMax := cli.IntFlag{Name: "hrmax", Value: notSetIntValue, Usage: "hr max"}
+	flagHRAvg := cli.IntFlag{Name: "hravg", Value: notSetIntValue, Usage: "hr average"}
+	flagSpeedMax := cli.Float64Flag{Name: "speed_max", Value: notSetFloatValue, Usage: "maximum speed"}
+	flagDriveways := cli.Float64Flag{Name: "driveways", Value: notSetFloatValue, Usage: "sum of driveways"}
+	flagCalories := cli.IntFlag{Name: "calories", Value: notSetIntValue, Usage: "sum of calories burnt"}
+	flagTemperature := cli.Float64Flag{Name: "temperature", Value: notSetFloatValue, Usage: "average temperature"}
 
 	app.Commands = []cli.Command{
 		{Name: "init",
@@ -222,7 +246,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Add new bicycle.",
-					Action:  cmdBicycleAdd}}},
+					Action:  cmdBicycleAdd},
+				{Name: objectTrip,
+					Aliases: []string{objectTripAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagTitle, flagBicycle, flagDate, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
+					Usage:   "Add new trip.",
+					Action:  cmdTripAdd}}},
 		{Name: "list", Aliases: []string{"L"}, Usage: "List objects (bicycles, bicycle types, trips, trips categories)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
@@ -601,7 +630,7 @@ func cmdCategoryEdit(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		printError.Fatalln(errNoCategoriesWithID)
+		printError.Fatalln(errNoCategoryWithID)
 	}
 
 	// Show summary if verbose
@@ -640,7 +669,7 @@ func cmdCategoryDelete(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 	if i, _ := r.RowsAffected(); i == 0 {
-		printError.Fatalln(errNoCategoriesWithID)
+		printError.Fatalln(errNoCategoryWithID)
 	}
 
 	// Show summary if verbose
@@ -917,15 +946,133 @@ func cmdBicycleDelete(c *cli.Context) {
 	}
 }
 
+func cmdTripAdd(c *cli.Context) {
+	//TODO: refactor all not-set values to constants in all functions
+	// Check obligatory flags (file, title, bicycle, trip category, distance)
+	if c.String("file") == notSetStringValue {
+		printError.Fatalln(errMissingFileFlag)
+	}
+	tTitle := c.String("title")
+	if tTitle == notSetStringValue {
+		printError.Fatalln(errMissingTitleFlag)
+	}
+	tBicycle := c.String("bicycle")
+	if tBicycle == notSetStringValue {
+		printError.Fatalln(errMissingBicycleFlag)
+	}
+	tCategory := c.String("category")
+	if tCategory == notSetStringValue {
+		printError.Fatalln(errMissingCategoryFlag)
+	}
+	tDistance := c.Float64("distance")
+	if tDistance == notSetFloatValue {
+		printError.Fatalln(errMissingDistanceFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Add new trip
+	tBicycleId, err := bicycleIDForName(f.Handler, tBicycle)
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	tCategoryId, err := tripCategoryIDForName(f.Handler, tCategory)
+	if err != nil {
+		printError.Fatalln(err)
+	}
+
+	sqlAddTrip := fmt.Sprintf("BEGIN TRANSACTION;")
+	sqlAddTrip = sqlAddTrip + fmt.Sprintf("INSERT INTO trips (id, bicycle_id, date,title, trip_category_id, distance) VALUES (NULL, %d, '%s', '%s', %d, %f);", tBicycleId, c.String("date"), tTitle, tCategoryId, tDistance)
+	tDuration := c.Float64("duration")
+	if tDuration != notSetFloatValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET duration=%f WHERE id=last_insert_rowid();", tDuration)
+	}
+	tDescription := c.String("description")
+	if tDescription != notSetStringValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET description='%s' WHERE id=last_insert_rowid();", tDescription)
+	}
+	tHRMax := c.Int("hrmax")
+	if tHRMax != notSetIntValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET hr_max=%d WHERE id=last_insert_rowid();", tHRMax)
+	}
+	tHRAvg := c.Int("hravg")
+	if tHRAvg != notSetIntValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET hr_avg=%d WHERE id=last_insert_rowid();", tHRAvg)
+	}
+	tSpeedMax := c.Float64("speed_max")
+	if tSpeedMax != notSetFloatValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET speed_max=%f WHERE id=last_insert_rowid();", tSpeedMax)
+	}
+	tDriveways := c.Float64("driveways")
+	if tDriveways != notSetFloatValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET driveways=%f WHERE id=last_insert_rowid();", tDriveways)
+	}
+	tCalories := c.Int("calories")
+	if tCalories != notSetIntValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET calories=%d WHERE id=last_insert_rowid();", tCalories)
+	}
+	tTemperature := c.Float64("temperature")
+	if tTemperature != notSetFloatValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET temperature=%f WHERE id=last_insert_rowid();", tTemperature)
+	}
+	sqlAddTrip = sqlAddTrip + fmt.Sprintf("COMMIT;")
+
+	_, err = f.Handler.Exec(sqlAddTrip)
+	if err != nil {
+		printError.Fatalln(errWritingToFile)
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		printUserMsg.Printf("added new trip: '%s'\n", tTitle)
+	}
+}
+
 // ********************
 // Supportive Functions
 // ********************
 
-// bicycleTypeIDForName returns bicycle type id for a given (part of) name.
+// bicycleIDForName returns bicycle id for a given (part of) name.
 // db - SQL database handler
 // n - bicycle name, or part of its name
+func bicycleIDForName(db *sql.DB, n string) (int, error) {
+	var id int = notSetIntValue
+
+	// Find all IDs of types that match '*n*'
+	sqlGetIdQuery := fmt.Sprintf("SELECT id FROM bicycles WHERE name LIKE '%%%s%%';", n)
+	rows, err := db.Query(sqlGetIdQuery)
+	if err != nil {
+		return id, errors.New(errReadingFromFile)
+	}
+	defer rows.Close()
+
+	var i int = 0
+	for rows.Next() {
+		rows.Scan(&id)
+		i++
+	}
+
+	switch i {
+	case 0:
+		return id, errors.New(errNoBicycleForName)
+	case 1:
+		return id, nil
+	default:
+		return id, errors.New(errBicycleNameisAmbiguous)
+	}
+}
+
+// bicycleTypeIDForName returns bicycle type id for a given (part of) name.
+// db - SQL database handler
+// n - bicycle type name, or part of its name
 func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
-	var id int = -1
+	var id int = notSetIntValue
 
 	// Find all IDs of types that match '*n*'
 	sqlGetIdQuery := fmt.Sprintf("SELECT id FROM bicycle_types WHERE name LIKE '%%%s%%';", n)
@@ -948,6 +1095,36 @@ func bicycleTypeIDForName(db *sql.DB, n string) (int, error) {
 		return id, nil
 	default:
 		return id, errors.New(errBicycleTypeNameIsAmbiguous)
+	}
+}
+
+// tripCategoryIDForName returns trip category id for a given (part of) name.
+// db - SQL database handler
+// n - trip category name, or part of its name
+func tripCategoryIDForName(db *sql.DB, n string) (int, error) {
+	var id int = notSetIntValue
+
+	// Find all IDs of types that match '*n*'
+	sqlGetIdQuery := fmt.Sprintf("SELECT id FROM trip_categories WHERE name LIKE '%%%s%%';", n)
+	rows, err := db.Query(sqlGetIdQuery)
+	if err != nil {
+		return id, errors.New(errReadingFromFile)
+	}
+	defer rows.Close()
+
+	var i int = 0
+	for rows.Next() {
+		rows.Scan(&id)
+		i++
+	}
+
+	switch i {
+	case 0:
+		return id, errors.New(errNoCategoryForName)
+	case 1:
+		return id, nil
+	default:
+		return id, errors.New(errCategoryNameIsAmbiguous)
 	}
 }
 
