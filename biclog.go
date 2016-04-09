@@ -122,23 +122,21 @@ var (
 // Headers titles
 const (
 	btIdHeader   = "ID"
-	btNameHeader = "B.TYPE"
+	btNameHeader = "TYPE"
 
 	tcIdHeader   = "ID"
-	tcNameHeader = "T.CATEGORY"
+	tcNameHeader = "CATEGORY"
 
-	bcIdHeader          = "ID"
-	bcNameHeader        = "B.NAME"
-	bcProducerHeader    = "PRODUCER"
-	bcModelHeader       = "MODEL"
-	bcProdYearHeader    = "PROD.YEAR"
-	bcBuyingDateHeader  = "BUY.DATE"
-	bdDescriptionHeader = "DESCRIPTION"
-	bcStatusHeader      = "STATUS"
-	bcSizeHeader        = "SIZE"
-	bcWeightHeader      = "WEIGHT"
-	bcInitDistHeader    = "INIT DIST."
-	bcSeriesHeader      = "SERIES"
+	bcIdHeader       = "ID"
+	bcNameHeader     = "BICYCLE"
+	bcProducerHeader = "PRODUCER"
+	bcModelHeader    = "MODEL"
+
+	trpIdHeader       = "ID"
+	trpDateHeader     = "DATE"
+	trpTitleHeader    = "TITLE"
+	trpDistanceHeader = "DISTANCE"
+	trpDurationHeader = "DURATION"
 )
 
 // DB Properties
@@ -217,6 +215,7 @@ SUBCOMMANDS:
 	flagTitle := cli.StringFlag{Name: "title, s", Value: notSetStringValue, Usage: "trip title"}
 	flagDistance := cli.Float64Flag{Name: "distance, r", Value: notSetFloatValue, Usage: "trip distance"}
 	flagDuration := cli.DurationFlag{Name: "duration, l", Usage: "trip duration"}
+	//TODO: solve issue with duration - now it doesn't work
 	flagHRMax := cli.IntFlag{Name: "hrmax", Value: notSetIntValue, Usage: "hr max"}
 	flagHRAvg := cli.IntFlag{Name: "hravg", Value: notSetIntValue, Usage: "hr average"}
 	flagSpeedMax := cli.Float64Flag{Name: "speed_max", Value: notSetFloatValue, Usage: "maximum speed"}
@@ -268,7 +267,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile},
 					Usage:   "List available bicycles.",
-					Action:  cmdBicycleList}}},
+					Action:  cmdBicycleList},
+				{Name: objectTrip,
+					Aliases: []string{objectTripAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Usage:   "List available trips.",
+					Action:  cmdTripList}}},
 		{Name: "edit", Aliases: []string{"E"}, Usage: "Edit an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
@@ -1034,6 +1038,78 @@ func cmdTripAdd(c *cli.Context) {
 	}
 }
 
+func cmdTripList(c *cli.Context) {
+	// Check obligatory flags (file)
+	if c.String("file") == "" {
+		printError.Fatalln(errMissingFileFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Create formatting strings
+	var lId, lDate, lTitle, lCategory, lBicycle, lDistance, lDuration int
+	maxQuery := fmt.Sprintf("SELECT max(length(t.id)), max(length(t.date)), max(length(t.title)), max(length(c.name)), max(length(b.name)), max(length(t.distance)), ifnull(max(length(t.duration)),0) FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN trip_categories c ON t.trip_category_id=c.id;")
+	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lDate, &lTitle, &lCategory, &lBicycle, &lDistance, &lDuration)
+	fmt.Println(maxQuery)
+	if err != nil {
+		printError.Fatalln("no trips")
+	}
+	if hl := utf8.RuneCountInString(bcIdHeader); lId < hl {
+		lId = hl
+	}
+	if hl := utf8.RuneCountInString(trpDateHeader); lDate < hl {
+		lDate = hl
+	}
+	if hl := utf8.RuneCountInString(trpTitleHeader); lTitle < hl {
+		lTitle = hl
+	}
+	if hl := utf8.RuneCountInString(tcNameHeader); lCategory < hl {
+		lCategory = hl
+	}
+	if hl := utf8.RuneCountInString(bcNameHeader); lBicycle < hl {
+		lBicycle = hl
+	}
+	if hl := utf8.RuneCountInString(trpDistanceHeader); lDistance < hl {
+		lDistance = hl
+	}
+	if hl := utf8.RuneCountInString(trpDurationHeader); lDuration < hl {
+		lDuration = hl
+	}
+
+	fmtStrings := make(map[string]string)
+	fmtStrings["id"] = fmt.Sprintf("%%%dv", lId)
+	fmtStrings["date"] = fmt.Sprintf("%%-%dv", lDate)
+	fmtStrings["title"] = fmt.Sprintf("%%-%dv", lTitle)
+	fmtStrings["category"] = fmt.Sprintf("%%-%dv", lCategory)
+	fmtStrings["bicycle"] = fmt.Sprintf("%%-%dv", lBicycle)
+	fmtStrings["distance"] = fmt.Sprintf("%%%dv", lDistance)
+	fmtStrings["duration"] = fmt.Sprintf("%%%dv", lDuration)
+	//TODO: change above to variables, since map doesn't give you IDE control and you don't need the overhead for map. Do it in all 'list' funcs
+
+	// List bicycles
+	rows, err := f.Handler.Query(fmt.Sprintf("SELECT t.id, t.date, t.title, c.name, b.name, t.distance, t.duration FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN trip_categories c ON t.trip_category_id=c.id;"))
+	if err != nil {
+		printError.Fatalln(errReadingFromFile)
+	}
+	defer rows.Close()
+	line := strings.Join([]string{fmtStrings["id"], fmtStrings["date"], fmtStrings["title"], fmtStrings["category"], fmtStrings["bicycle"], fmtStrings["distance"], fmtStrings["duration"]}, fsSeparator) + "\n"
+	fmt.Fprintf(os.Stdout, line, trpIdHeader, trpDateHeader, trpTitleHeader, tcNameHeader, bcNameHeader, trpDistanceHeader, trpDurationHeader)
+
+	for rows.Next() {
+		var id int
+		var date, title, category, bicycle string
+		var distance, duration float64
+		rows.Scan(&id, &date, &title, &category, &bicycle, &distance, &duration)
+		fmt.Fprintf(os.Stdout, line, id, date, title, category, bicycle, distance, duration)
+	}
+}
+
 // ********************
 // Supportive Functions
 // ********************
@@ -1197,6 +1273,7 @@ func bicyclePossibleToDelete(db *sql.DB, id int) bool {
 // bicycleStatusNoForName returns status id for given (part of) status name
 // n - (part of) status name
 func bicycleStatusNoForName(n string) (int, error) {
+	//TODO: review all constants and check where to imitate real ENUM (type enum_name int and then list of consts)
 	var val int = -1
 
 	for key, val := range bicycleStatuses {
