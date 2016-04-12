@@ -22,7 +22,7 @@
 //DONE: command - bicycle delete
 //TODO: command - bicycle show details
 //DONE: command - trip add
-//TODO: command - trip list
+//DONE: command - trip list
 //TODO: command - trip edit
 //TODO: command - trip delete
 //TODO: command - trip show details
@@ -164,7 +164,7 @@ func main() {
 		}
 	}
 	configFile.Close()
-	dataFile := configSettings.GetOrDefault(confDataFile, "")
+	dataFile := configSettings.GetOrDefault(confDataFile, notSetStringValue)
 	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(confVerbose, "false"))
 	if err != nil {
 		verbose = false
@@ -214,8 +214,7 @@ SUBCOMMANDS:
 	flagDate := cli.StringFlag{Name: "date", Value: time.Now().Format("2006-01-02"), Usage: "date of trip (default: today)"}
 	flagTitle := cli.StringFlag{Name: "title, s", Value: notSetStringValue, Usage: "trip title"}
 	flagDistance := cli.Float64Flag{Name: "distance, r", Value: notSetFloatValue, Usage: "trip distance"}
-	flagDuration := cli.DurationFlag{Name: "duration, l", Usage: "trip duration"}
-	//TODO: solve issue with duration - now it doesn't work
+	flagDuration := cli.StringFlag{Name: "duration, l", Value: notSetStringValue, Usage: "trip duration"}
 	flagHRMax := cli.IntFlag{Name: "hrmax", Value: notSetIntValue, Usage: "hr max"}
 	flagHRAvg := cli.IntFlag{Name: "hravg", Value: notSetIntValue, Usage: "hr average"}
 	flagSpeedMax := cli.Float64Flag{Name: "speed_max", Value: notSetFloatValue, Usage: "maximum speed"}
@@ -316,7 +315,7 @@ SUBCOMMANDS:
 
 func cmdInit(c *cli.Context) {
 	// Check the obligatory parameters and exit if missing
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 
@@ -377,11 +376,11 @@ CREATE TABLE trip_categories (
 
 func cmdTypeAdd(c *cli.Context) {
 	// Check obligatory flags (file, name)
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 
 	}
-	if c.String("type") == "" {
+	if c.String("type") == notSetStringValue {
 		printError.Fatalln(errMissingTypeFlag)
 	}
 
@@ -408,7 +407,7 @@ func cmdTypeAdd(c *cli.Context) {
 
 func cmdTypeList(c *cli.Context) {
 	// Check obligatory flags (file)
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 
@@ -454,15 +453,15 @@ func cmdTypeList(c *cli.Context) {
 
 func cmdTypeEdit(c *cli.Context) {
 	// Check obligatory flags
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
-	if id < 0 {
+	if id == notSetIntValue {
 		printError.Fatalln(errMissingIdFlag)
 	}
 	newName := c.String("type")
-	if newName == "" {
+	if newName == notSetStringValue {
 		printError.Fatalln(errMissingTypeFlag)
 	}
 
@@ -492,11 +491,11 @@ func cmdTypeEdit(c *cli.Context) {
 
 func cmdTypeDelete(c *cli.Context) {
 	// Check obligatory flags
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
-	if id < 0 {
+	if id == notSetIntValue {
 		printError.Fatalln(errMissingIdFlag)
 	}
 
@@ -531,10 +530,10 @@ func cmdTypeDelete(c *cli.Context) {
 
 func cmdCategoryAdd(c *cli.Context) {
 	// Check obligatory flags (file, name)
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
-	if c.String("category") == "" {
+	if c.String("category") == notSetStringValue {
 		printError.Fatalln(errMissingCategoryFlag)
 	}
 
@@ -561,7 +560,7 @@ func cmdCategoryAdd(c *cli.Context) {
 
 func cmdCategoryList(c *cli.Context) {
 	// Check obligatory flags (file)
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 
@@ -607,15 +606,15 @@ func cmdCategoryList(c *cli.Context) {
 
 func cmdCategoryEdit(c *cli.Context) {
 	// Check obligatory flags
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
-	if id < 0 {
+	if id == notSetIntValue {
 		printError.Fatalln(errMissingIdFlag)
 	}
 	newName := c.String("category")
-	if newName == "" {
+	if newName == notSetStringValue {
 		printError.Fatalln(errMissingCategoryFlag)
 	}
 
@@ -645,11 +644,11 @@ func cmdCategoryEdit(c *cli.Context) {
 
 func cmdCategoryDelete(c *cli.Context) {
 	// Check obligatory flags
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
-	if id < 0 {
+	if id == notSetIntValue {
 		printError.Fatalln(errMissingIdFlag)
 	}
 
@@ -684,15 +683,15 @@ func cmdCategoryDelete(c *cli.Context) {
 
 func cmdBicycleAdd(c *cli.Context) {
 	// Check obligatory flags (file, bicycle, bicycle type)
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	bName := c.String("bicycle")
-	if bName == "" {
+	if bName == notSetStringValue {
 		printError.Fatalln(errMissingBicycleFlag)
 	}
 	bType := c.String("type")
-	if bType == "" {
+	if bType == notSetStringValue {
 		printError.Fatalln(errMissingTypeFlag)
 	}
 
@@ -711,39 +710,39 @@ func cmdBicycleAdd(c *cli.Context) {
 	}
 	sqlAddBicycle := fmt.Sprintf("BEGIN TRANSACTION;INSERT INTO bicycles (id, name, bicycle_type_id) VALUES (NULL, '%s', %d);", bName, bTypeId)
 	bManufacturer := c.String("manufacturer")
-	if bManufacturer != "" {
+	if bManufacturer != notSetStringValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET producer='%s' WHERE id=last_insert_rowid();", bManufacturer)
 	}
 	bModel := c.String("model")
-	if bModel != "" {
+	if bModel != notSetStringValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET model='%s' WHERE id=last_insert_rowid();", bModel)
 	}
 	bYear := c.Int("year")
-	if bYear != 0 {
+	if bYear != notSetIntValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET production_year=%d WHERE id=last_insert_rowid();", bYear)
 	}
 	bBought := c.String("bought")
-	if bBought != "" {
+	if bBought != notSetStringValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET buying_date='%s' WHERE id=last_insert_rowid();", bBought)
 	}
 	bDesc := c.String("description")
-	if bDesc != "" {
+	if bDesc != notSetStringValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET description='%s' WHERE id=last_insert_rowid();", bDesc)
 	}
 	bSize := c.String("size")
-	if bSize != "" {
+	if bSize != notSetStringValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET size='%s' WHERE id=last_insert_rowid();", bSize)
 	}
 	bWeight := c.Float64("weight")
-	if bWeight != 0 {
+	if bWeight != notSetFloatValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET weight=%f WHERE id=last_insert_rowid();", bWeight)
 	}
 	bIDist := c.Float64("init_distance")
-	if bIDist != 0 {
+	if bIDist != notSetFloatValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET initial_distance=%f WHERE id=last_insert_rowid();", bIDist)
 	}
 	bSeries := c.String("series")
-	if bSeries != "" {
+	if bSeries != notSetStringValue {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=last_insert_rowid();", bSeries)
 	}
 	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=last_insert_rowid();COMMIT;", bicycleStatuses["owned"])
@@ -761,7 +760,7 @@ func cmdBicycleAdd(c *cli.Context) {
 
 func cmdBicycleList(c *cli.Context) {
 	// Check obligatory flags (file)
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 
@@ -796,12 +795,11 @@ func cmdBicycleList(c *cli.Context) {
 	if hl := utf8.RuneCountInString(btNameHeader); lType < hl {
 		lType = hl
 	}
-	fmtStrings := make(map[string]string)
-	fmtStrings["id"] = fmt.Sprintf("%%%dv", lId)
-	fmtStrings["name"] = fmt.Sprintf("%%-%dv", lName)
-	fmtStrings["producer"] = fmt.Sprintf("%%-%dv", lProducer)
-	fmtStrings["model"] = fmt.Sprintf("%%-%dv", lModel)
-	fmtStrings["type"] = fmt.Sprintf("%%-%dv", lType)
+	fsId := fmt.Sprintf("%%%dv", lId)
+	fsName := fmt.Sprintf("%%-%dv", lName)
+	fsProducer := fmt.Sprintf("%%-%dv", lProducer)
+	fsModel := fmt.Sprintf("%%-%dv", lModel)
+	fsType := fmt.Sprintf("%%-%dv", lType)
 
 	// List bicycles
 	rows, err := f.Handler.Query(fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"]))
@@ -809,7 +807,7 @@ func cmdBicycleList(c *cli.Context) {
 		printError.Fatalln(errReadingFromFile)
 	}
 	defer rows.Close()
-	line := strings.Join([]string{fmtStrings["id"], fmtStrings["name"], fmtStrings["producer"], fmtStrings["model"], fmtStrings["type"]}, fsSeparator) + "\n"
+	line := strings.Join([]string{fsId, fsName, fsProducer, fsModel, fsType}, fsSeparator) + "\n"
 	fmt.Fprintf(os.Stdout, line, bcIdHeader, bcNameHeader, bcProducerHeader, bcModelHeader, btNameHeader)
 
 	for rows.Next() {
@@ -822,11 +820,11 @@ func cmdBicycleList(c *cli.Context) {
 
 func cmdBicycleEdit(c *cli.Context) {
 	// Check obligatory flags
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
-	if id < 0 {
+	if id == notSetIntValue {
 		printError.Fatalln(errMissingIdFlag)
 	}
 
@@ -841,7 +839,7 @@ func cmdBicycleEdit(c *cli.Context) {
 	// Edit bicycle
 	sqlUpdateBicycle := fmt.Sprintf("BEGIN TRANSACTION;")
 	bType := c.String("type")
-	if bType != "" {
+	if bType != notSetStringValue {
 		bTypeId, err := bicycleTypeIDForName(f.Handler, bType)
 		if err != nil {
 			printError.Fatalln(err)
@@ -849,7 +847,7 @@ func cmdBicycleEdit(c *cli.Context) {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET bicycle_type_id=%d WHERE id=%d;", bTypeId, id)
 	}
 	bStatus := c.String("status")
-	if bStatus != "" {
+	if bStatus != notSetStringValue {
 		bStatusId, err := bicycleStatusNoForName(bStatus)
 		if err != nil {
 			printError.Fatalln(err)
@@ -857,43 +855,43 @@ func cmdBicycleEdit(c *cli.Context) {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET status=%d WHERE id=%d;", bStatusId, id)
 	}
 	bName := c.String("bicycle")
-	if bName != "" {
+	if bName != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET name=%s WHERE id=%d;", bName, id)
 	}
 	bManufacturer := c.String("manufacturer")
-	if bManufacturer != "" {
+	if bManufacturer != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET producer='%s' WHERE id=%d;", bManufacturer, id)
 	}
 	bModel := c.String("model")
-	if bModel != "" {
+	if bModel != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET model='%s' WHERE id=%d;", bModel, id)
 	}
 	bYear := c.Int("year")
-	if bYear != 0 {
+	if bYear != notSetIntValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET production_year=%d WHERE id=%d;", bYear, id)
 	}
 	bBought := c.String("bought")
-	if bBought != "" {
+	if bBought != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET buying_date='%s' WHERE id=%d;", bBought, id)
 	}
 	bDesc := c.String("description")
-	if bDesc != "" {
+	if bDesc != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET description='%s' WHERE id=%d;", bDesc, id)
 	}
 	bSize := c.String("size")
-	if bSize != "" {
+	if bSize != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET size='%s' WHERE id=%d;", bSize, id)
 	}
 	bWeight := c.Float64("weight")
-	if bWeight != 0 {
+	if bWeight != notSetFloatValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET weight=%f WHERE id=%d;", bWeight, id)
 	}
 	bIDist := c.Float64("init_distance")
-	if bIDist != 0 {
+	if bIDist != notSetFloatValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET initial_distance=%f WHERE id=%d;", bIDist, id)
 	}
 	bSeries := c.String("series")
-	if bSeries != "" {
+	if bSeries != notSetStringValue {
 		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=%d;", bSeries, id)
 	}
 	sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("COMMIT;")
@@ -913,11 +911,11 @@ func cmdBicycleEdit(c *cli.Context) {
 
 func cmdBicycleDelete(c *cli.Context) {
 	// Check obligatory flags
-	if c.String("file") == "" {
+	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
 	id := c.Int("id")
-	if id < 0 {
+	if id == notSetIntValue {
 		printError.Fatalln(errMissingIdFlag)
 	}
 
@@ -951,7 +949,6 @@ func cmdBicycleDelete(c *cli.Context) {
 }
 
 func cmdTripAdd(c *cli.Context) {
-	//TODO: refactor all not-set values to constants in all functions
 	// Check obligatory flags (file, title, bicycle, trip category, distance)
 	if c.String("file") == notSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
@@ -993,9 +990,9 @@ func cmdTripAdd(c *cli.Context) {
 
 	sqlAddTrip := fmt.Sprintf("BEGIN TRANSACTION;")
 	sqlAddTrip = sqlAddTrip + fmt.Sprintf("INSERT INTO trips (id, bicycle_id, date,title, trip_category_id, distance) VALUES (NULL, %d, '%s', '%s', %d, %f);", tBicycleId, c.String("date"), tTitle, tCategoryId, tDistance)
-	tDuration := c.Float64("duration")
-	if tDuration != notSetFloatValue {
-		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET duration=%f WHERE id=last_insert_rowid();", tDuration)
+	tDuration := c.String("duration")
+	if tDuration != notSetStringValue {
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET duration='%s' WHERE id=last_insert_rowid();", tDuration)
 	}
 	tDescription := c.String("description")
 	if tDescription != notSetStringValue {
@@ -1056,7 +1053,6 @@ func cmdTripList(c *cli.Context) {
 	var lId, lDate, lTitle, lCategory, lBicycle, lDistance, lDuration int
 	maxQuery := fmt.Sprintf("SELECT max(length(t.id)), max(length(t.date)), max(length(t.title)), max(length(c.name)), max(length(b.name)), max(length(t.distance)), ifnull(max(length(t.duration)),0) FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN trip_categories c ON t.trip_category_id=c.id;")
 	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lDate, &lTitle, &lCategory, &lBicycle, &lDistance, &lDuration)
-	fmt.Println(maxQuery)
 	if err != nil {
 		printError.Fatalln("no trips")
 	}
@@ -1082,15 +1078,13 @@ func cmdTripList(c *cli.Context) {
 		lDuration = hl
 	}
 
-	fmtStrings := make(map[string]string)
-	fmtStrings["id"] = fmt.Sprintf("%%%dv", lId)
-	fmtStrings["date"] = fmt.Sprintf("%%-%dv", lDate)
-	fmtStrings["title"] = fmt.Sprintf("%%-%dv", lTitle)
-	fmtStrings["category"] = fmt.Sprintf("%%-%dv", lCategory)
-	fmtStrings["bicycle"] = fmt.Sprintf("%%-%dv", lBicycle)
-	fmtStrings["distance"] = fmt.Sprintf("%%%dv", lDistance)
-	fmtStrings["duration"] = fmt.Sprintf("%%%dv", lDuration)
-	//TODO: change above to variables, since map doesn't give you IDE control and you don't need the overhead for map. Do it in all 'list' funcs
+	fsId := fmt.Sprintf("%%%dv", lId)
+	fsDate := fmt.Sprintf("%%-%dv", lDate)
+	fsTitle := fmt.Sprintf("%%-%dv", lTitle)
+	fsCategory := fmt.Sprintf("%%-%dv", lCategory)
+	fsBicycle := fmt.Sprintf("%%-%dv", lBicycle)
+	fsDistance := fmt.Sprintf("%%%dv", lDistance)
+	fsDuration := fmt.Sprintf("%%%dv", lDuration)
 
 	// List bicycles
 	rows, err := f.Handler.Query(fmt.Sprintf("SELECT t.id, t.date, t.title, c.name, b.name, t.distance, t.duration FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN trip_categories c ON t.trip_category_id=c.id;"))
@@ -1098,13 +1092,13 @@ func cmdTripList(c *cli.Context) {
 		printError.Fatalln(errReadingFromFile)
 	}
 	defer rows.Close()
-	line := strings.Join([]string{fmtStrings["id"], fmtStrings["date"], fmtStrings["title"], fmtStrings["category"], fmtStrings["bicycle"], fmtStrings["distance"], fmtStrings["duration"]}, fsSeparator) + "\n"
+	line := strings.Join([]string{fsId, fsDate, fsTitle, fsCategory, fsBicycle, fsDistance, fsDuration}, fsSeparator) + "\n"
 	fmt.Fprintf(os.Stdout, line, trpIdHeader, trpDateHeader, trpTitleHeader, tcNameHeader, bcNameHeader, trpDistanceHeader, trpDurationHeader)
 
 	for rows.Next() {
 		var id int
-		var date, title, category, bicycle string
-		var distance, duration float64
+		var date, title, category, bicycle, duration string
+		var distance float64
 		rows.Scan(&id, &date, &title, &category, &bicycle, &distance, &duration)
 		fmt.Fprintf(os.Stdout, line, id, date, title, category, bicycle, distance, duration)
 	}
