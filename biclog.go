@@ -71,6 +71,7 @@ const (
 	errNoBicycleStatus            = "unknown bicycle status"
 	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
 	errCategoryNameIsAmbiguous    = "given trip category name is ambiguous"
+	errNoTripWithID               = "no trip with given id"
 
 	errCannotRemoveBicycleType = "cannot remove bicycle type because there are bicycles of this type"
 	errCannotRemoveCategory    = "cannot remove category because there are trips with this category"
@@ -305,7 +306,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
 					Usage:   "Delete bicycle with given id.",
-					Action:  cmdBicycleDelete}}}}
+					Action:  cmdBicycleDelete},
+				{Name: objectTrip,
+					Aliases: []string{objectTripAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Usage:   "Delete trip with given id.",
+					Action:  cmdTripDelete}}}}
 	app.Run(os.Args)
 }
 
@@ -1101,6 +1107,40 @@ func cmdTripList(c *cli.Context) {
 		var distance float64
 		rows.Scan(&id, &date, &title, &category, &bicycle, &distance, &duration)
 		fmt.Fprintf(os.Stdout, line, id, date, title, category, bicycle, distance, duration)
+	}
+}
+
+func cmdTripDelete(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == notSetStringValue {
+		printError.Fatalln(errMissingFileFlag)
+	}
+	id := c.Int("id")
+	if id == notSetIntValue {
+		printError.Fatalln(errMissingIdFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Delete bicycle type
+	sqlDeleteTrip := fmt.Sprintf("DELETE FROM trips WHERE id=%d;", id)
+	r, err := f.Handler.Exec(sqlDeleteTrip)
+	if err != nil {
+		printError.Fatalln(errWritingToFile)
+	}
+	if i, _ := r.RowsAffected(); i == 0 {
+		printError.Fatalln(errNoTripWithID)
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		printUserMsg.Printf("deleted tirp with id = %d\n", id)
 	}
 }
 
