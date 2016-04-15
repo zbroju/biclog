@@ -24,7 +24,7 @@
 //DONE: command - trip add
 //DONE: command - trip list
 //TODO: command - trip edit
-//TODO: command - trip delete
+//DONE: command - trip delete
 //TODO: command - trip show details
 //TODO: command - report summary
 //TODO: command - report history
@@ -289,7 +289,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Edit bicycle details.",
-					Action:  cmdBicycleEdit}}},
+					Action:  cmdBicycleEdit},
+				{Name: objectTrip,
+					Aliases: []string{objectTripAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagBicycle, flagDate, flagTitle, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
+					Usage:   "Edit trip details.",
+					Action:  cmdTripEdit}}},
 		{Name: "delete", Aliases: []string{"D"}, Usage: "Delete an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
@@ -1107,6 +1112,102 @@ func cmdTripList(c *cli.Context) {
 		var distance float64
 		rows.Scan(&id, &date, &title, &category, &bicycle, &distance, &duration)
 		fmt.Fprintf(os.Stdout, line, id, date, title, category, bicycle, distance, duration)
+	}
+}
+
+func cmdTripEdit(c *cli.Context) {
+	// Check obligatory flags
+	if c.String("file") == notSetStringValue {
+		printError.Fatalln(errMissingFileFlag)
+	}
+	id := c.Int("id")
+	if id == notSetIntValue {
+		printError.Fatalln(errMissingIdFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Edit trip
+	sqlUpdateTrip := fmt.Sprintf("BEGIN TRANSACTION;")
+	tCategory := c.String("category")
+	if tCategory != notSetStringValue {
+		tCategoryId, err := tripCategoryIDForName(f.Handler, tCategory)
+		if err != nil {
+			printError.Fatalln(err)
+		}
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET trip_category_id=%d WHERE id=%d;", tCategoryId, id)
+	}
+	tBicycle := c.String("bicycle")
+	if tBicycle != notSetStringValue {
+		tBicycleId, err := bicycleIDForName(f.Handler, tBicycle)
+		if err != nil {
+			printError.Fatalln(err)
+		}
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET bicycle_id=%d WHERE id=%d;", tBicycleId, id)
+	}
+	tDate := c.String("date")
+	//TODO: change c.String("x") to c.String(const) for all occurencies
+	if tDate != notSetStringValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET date='%s' WHERE id=%d;", tDate, id)
+	}
+	tTitle := c.String("title")
+	if tTitle != notSetStringValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET title='%s' WHERE id=%d;", tTitle, id)
+	}
+	tDistance := c.Float64("distance")
+	if tDistance != notSetFloatValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET distance=%f WHERE id=%f;", tDistance, id)
+	}
+	tDuration := c.String("duration")
+	if tDuration != notSetStringValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET duration='%s' WHERE id=%d;", tDuration, id)
+	}
+	tDescription := c.String("description")
+	if tDescription != notSetStringValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET description='%s' WHERE id=%d;", tDescription, id)
+	}
+	tHrMax := c.Int("hrmax")
+	if tHrMax != notSetIntValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET hr_max=%d WHERE id=%d;", tHrMax, id)
+	}
+	tHrAvg := c.Int("hravg")
+	if tHrAvg != notSetIntValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET hr_avg=%d WHERE id=%d;", tHrAvg, id)
+	}
+	tSpeedMax := c.Float64("speed_max")
+	if tSpeedMax != notSetFloatValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET speed_max=%f WHERE id=%d;", tSpeedMax, id)
+	}
+	tDriveways := c.Float64("driveways")
+	if tDriveways != notSetFloatValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET driveways=%f WHERE id=%d;", tDriveways, id)
+	}
+	tCalories := c.Int("calories")
+	if tCalories != notSetIntValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET calories=%d WHERE id=%d;", tCalories, id)
+	}
+	tTemperature := c.Float64("temperature")
+	if tTemperature != notSetFloatValue {
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET calories=%f WHERE id=%d;", tTemperature, id)
+	}
+	sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("COMMIT;")
+	r, err := f.Handler.Exec(sqlUpdateTrip)
+	if err != nil {
+		printError.Fatalln(errWritingToFile)
+	}
+	if i, _ := r.RowsAffected(); i == 0 {
+		printError.Fatalln(errNoBicycleWithID)
+	}
+
+	// Show summary if verbose
+	if c.Bool("verbose") == true {
+		printUserMsg.Printf("changed trip details\n")
 	}
 }
 
