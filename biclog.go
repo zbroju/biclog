@@ -25,7 +25,7 @@
 //DONE: command - trip list
 //DONE: command - trip edit
 //DONE: command - trip delete
-//TODO: command - trip show details
+//DONE: command - trip show details
 //TODO: command - report summary
 //TODO: command - report history
 //TODO: command - report pie chart (share of bicycles)
@@ -146,10 +146,19 @@ const (
 	bcSeriesHeading          = "SERIES"
 	bcHeadingSize            = 20
 
-	trpIdHeader       = "ID"
-	trpDateHeader     = "DATE"
-	trpTitleHeader    = "TITLE"
-	trpDistanceHeader = "DISTANCE"
+	trpIdHeader           = "ID"
+	trpDateHeader         = "DATE"
+	trpTitleHeader        = "TITLE"
+	trpDistanceHeader     = "DISTANCE"
+	trpDurationHeading    = "DURATION"
+	trpDescriptionHeading = "DESCRIPTION"
+	trpHrMaxHeading       = "HR MAX"
+	trpHrAvgHeading       = "HR AVG"
+	trpSpeedMaxHeading    = "MAX SPEED"
+	trpDrivewaysHeading   = "DRIVEWAYS"
+	trpCaloriesHeading    = "CALORIES"
+	trpTemperatureHeading = "TEMPERATURE"
+	trpHeadingSize        = 15
 )
 
 // DB Properties
@@ -173,7 +182,7 @@ func main() {
 	if err == nil {
 		err = configSettings.Load(configFile)
 		if err != nil {
-			printError.Fatalln(errSyntaxErrorInConfig)
+			printError.Fatalln(err)
 		}
 	}
 	configFile.Close()
@@ -336,7 +345,12 @@ SUBCOMMANDS:
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagBicycle},
 					Usage:   "Shows details of bicycle with given id or bicycle.",
-					Action:  cmdBicycleShow}}}}
+					Action:  cmdBicycleShow},
+				{Name: objectTrip,
+					Aliases: []string{objectTripAlias},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Usage:   "Shows details of trip with given id.",
+					Action:  cmdTripShow}}}}
 	app.Run(os.Args)
 }
 
@@ -1038,7 +1052,7 @@ func cmdBicycleShow(c *cli.Context) {
 	showQuery := fmt.Sprintf("SELECT b.id, ifnull(b.name,''), ifnull(b.producer,''), ifnull(b.model,''), ifnull(t.name,''), ifnull(b.production_year,0), ifnull(b.buying_date,0), ifnull(b.description,''), ifnull(b.status,0), ifnull(b.size,''), ifnull(b.weight,0), ifnull(b.initial_distance,0), ifnull(b.series_no,'') FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.id=%d;", bcID)
 	err = f.Handler.QueryRow(showQuery).Scan(&bId, &bName, &bProducer, &bModel, &bType, &bPYear, &bBDate, &bDesc, &bStatId, &bSize, &bWeight, &bIDist, &bSeries)
 	if err != nil {
-		printError.Fatalln(errReadingFromFile)
+		printError.Fatalln(errNoBicycleWithID)
 	}
 
 	fmt.Printf(line, bcIdHeader, bId)
@@ -1048,12 +1062,12 @@ func cmdBicycleShow(c *cli.Context) {
 	fmt.Printf(line, btNameHeader, bType)
 	fmt.Printf(line, bcProductionYearHeading, bPYear)
 	fmt.Printf(line, bcBuyingDateHeading, bBDate)
-	fmt.Printf(line, bcDescriptionHeading, bDesc)
 	fmt.Printf(line, bcStatusHeading, bicycleStatusNameForID(bStatId))
 	fmt.Printf(line, bcSizeHeading, bSize)
 	fmt.Printf(line, bcWeightHeading, bWeight)
 	fmt.Printf(line, bcInitialDistanceHeading, bIDist)
 	fmt.Printf(line, bcSeriesHeading, bSeries)
+	fmt.Printf(line, bcDescriptionHeading, bDesc)
 	//TODO: adjust missing values so that '' is shown instead of '-1'
 
 }
@@ -1337,6 +1351,57 @@ func cmdTripDelete(c *cli.Context) {
 	if c.Bool("verbose") == true {
 		printUserMsg.Printf("deleted tirp with id = %d\n", id)
 	}
+}
+
+func cmdTripShow(c *cli.Context) {
+	// Check obligatory flags (file)
+	if c.String("file") == notSetStringValue {
+		printError.Fatalln(errMissingFileFlag)
+	}
+	tID := c.Int("id")
+	if tID == notSetIntValue {
+		printError.Fatalln(errMissingIdFlag)
+	}
+
+	// Open data file
+	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+	err := f.Open()
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	defer f.Close()
+
+	// Create formatting strings
+	line := fmt.Sprintf("%%-%dv%%-v\n", trpHeadingSize)
+
+	// Show trip
+	var (
+		tId, tHrMax, tHrAvg, tCalories                    int
+		bName, tDate, tTitle, tCategory, tDuration, tDesc string
+		tDistance, tSpeedMax, tDriveways, tTemp           float64
+	)
+	showQuery := fmt.Sprintf("SELECT t.id, ifnull(b.name,''), ifnull(t.date,''), ifnull(t.title,''), ifnull(c.name,''), ifnull(t.distance,0), ifnull(t.duration,''), ifnull(t.description,''), ifnull(t.hr_max,0), ifnull(t.hr_avg,0), ifnull(t.speed_max,0), ifnull(t.driveways,0), ifnull(t.calories,0), ifnull(t.temperature,0) FROM trips t LEFT JOIN trip_categories c ON t.trip_category_id=c.id LEFT JOIN bicycles b ON t.bicycle_id=b.id WHERE t.id=%d;", tID)
+	err = f.Handler.QueryRow(showQuery).Scan(&tId, &bName, &tDate, &tTitle, &tCategory, &tDistance, &tDuration, &tDesc, &tHrMax, &tHrAvg, &tSpeedMax, &tDriveways, &tCalories, &tTemp)
+	if err != nil {
+		printError.Fatalln(errNoTripWithID)
+	}
+
+	fmt.Printf(line, trpIdHeader, tId)
+	fmt.Printf(line, bcNameHeader, bName)
+	fmt.Printf(line, trpDateHeader, tDate)
+	fmt.Printf(line, trpTitleHeader, tTitle)
+	fmt.Printf(line, tcNameHeader, tCategory)
+	fmt.Printf(line, trpDistanceHeader, tDistance)
+	fmt.Printf(line, trpDurationHeading, tDuration)
+	fmt.Printf(line, trpHrMaxHeading, tHrMax)
+	fmt.Printf(line, trpHrAvgHeading, tHrAvg)
+	fmt.Printf(line, trpSpeedMaxHeading, tSpeedMax)
+	fmt.Printf(line, trpDrivewaysHeading, tDriveways)
+	fmt.Printf(line, trpCaloriesHeading, tCalories)
+	fmt.Printf(line, trpTemperatureHeading, tTemp)
+	fmt.Printf(line, trpDescriptionHeading, tDesc)
+	//TODO: adjust missing values so that '' is shown instead of '-1'
+
 }
 
 // ********************
