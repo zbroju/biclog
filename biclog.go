@@ -1019,7 +1019,9 @@ func cmdBicycleShow(c *cli.Context) {
 	defer f.Close()
 
 	// Create formatting strings
-	line := fmt.Sprintf("%%-%dv%%-v\n", bcHeadingSize)
+	lineStr := fmt.Sprintf("%%-%ds%%-s\n", bcHeadingSize)
+	lineInt := fmt.Sprintf("%%-%ds%%-d\n", bcHeadingSize)
+	lineFloat := fmt.Sprintf("%%-%ds%%-.2f\n", bcHeadingSize)
 
 	// Show bicycles
 	if bcID == notSetIntValue {
@@ -1039,21 +1041,55 @@ func cmdBicycleShow(c *cli.Context) {
 		printError.Fatalln(errNoBicycleWithID)
 	}
 
-	fmt.Printf(line, bcIdHeader, bId)
-	fmt.Printf(line, bcNameHeader, bName)
-	fmt.Printf(line, bcProducerHeader, bProducer)
-	fmt.Printf(line, bcModelHeader, bModel)
-	fmt.Printf(line, btNameHeader, bType)
-	fmt.Printf(line, bcProductionYearHeading, bPYear)
-	fmt.Printf(line, bcBuyingDateHeading, bBDate)
-	fmt.Printf(line, bcStatusHeading, bicycleStatusNameForID(bStatId))
-	fmt.Printf(line, bcSizeHeading, bSize)
-	fmt.Printf(line, bcWeightHeading, bWeight)
-	fmt.Printf(line, bcInitialDistanceHeading, bIDist)
-	fmt.Printf(line, bcSeriesHeading, bSeries)
-	fmt.Printf(line, bcDescriptionHeading, bDesc)
-	//TODO: adjust missing values so that '' is shown instead of '-1'
-
+	fmt.Printf(lineInt, bcIdHeader, bId)     // no need for if because it's obligatory
+	fmt.Printf(lineStr, bcNameHeader, bName) // no need for if because it's obligatory
+	if bProducer != notSetStringValue {
+		fmt.Printf(lineStr, bcProducerHeader, bProducer)
+	} else {
+		fmt.Printf(lineStr, bcProducerHeader, nullDataValue)
+	}
+	if bModel != notSetStringValue {
+		fmt.Printf(lineStr, bcModelHeader, bModel)
+	} else {
+		fmt.Printf(lineStr, bcModelHeader, nullDataValue)
+	}
+	fmt.Printf(lineStr, btNameHeader, bType) // no need for if because it's obligatory
+	if bPYear != 0 {
+		fmt.Printf(lineInt, bcProductionYearHeading, bPYear)
+	} else {
+		fmt.Printf(lineStr, bcProductionYearHeading, nullDataValue)
+	}
+	if bBDate != notSetStringValue {
+		fmt.Printf(lineStr, bcBuyingDateHeading, bBDate)
+	} else {
+		fmt.Printf(lineStr, bcBuyingDateHeading, nullDataValue)
+	}
+	fmt.Printf(lineStr, bcStatusHeading, bicycleStatusNameForID(bStatId)) // no need for if because it's obligatory
+	if bSize != notSetStringValue {
+		fmt.Printf(lineStr, bcSizeHeading, bSize)
+	} else {
+		fmt.Printf(lineStr, bcSizeHeading, nullDataValue)
+	}
+	if bWeight != 0 {
+		fmt.Printf(lineFloat, bcWeightHeading, bWeight)
+	} else {
+		fmt.Printf(lineStr, bcWeightHeading, nullDataValue)
+	}
+	if bIDist != 0 {
+		fmt.Printf(lineFloat, bcInitialDistanceHeading, bIDist)
+	} else {
+		fmt.Printf(lineStr, bcInitialDistanceHeading, nullDataValue)
+	}
+	if bSeries != notSetStringValue {
+		fmt.Printf(lineStr, bcSeriesHeading, bSeries)
+	} else {
+		fmt.Printf(lineStr, bcSeriesHeading, nullDataValue)
+	}
+	if bDesc != notSetStringValue {
+		fmt.Printf(lineStr, bcDescriptionHeading, bDesc)
+	} else {
+		fmt.Printf(lineStr, bcDescriptionHeading, nullDataValue)
+	}
 }
 
 func cmdTripAdd(c *cli.Context) {
