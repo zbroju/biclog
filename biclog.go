@@ -30,6 +30,8 @@
 //TODO: command - report history
 //TODO: command - report pie chart (share of bicycles)
 //TODO: command - report bar chart (history)
+//DONE: fix issue so that searching by bicycle name, trip category, bicycle type is irrespective of capitals
+//TODO: move all function except for main() to /lib folder
 package main
 
 import (
@@ -50,7 +52,6 @@ import (
 
 // Error messages
 const (
-	errSyntaxErrorInConfig    = "syntax error in config file"
 	errMissingFileFlag        = "missing information about data file. Specify it with --file or -f flag"
 	errMissingTypeFlag        = "missing bicycle type. Specify it with --type or -t flag"
 	errMissingCategoryFlag    = "missing trip category. Specify it with --category or -c flag"
@@ -76,6 +77,8 @@ const (
 	errBicycleTypeNameIsAmbiguous = "given bicycle type name is ambiguous"
 	errCategoryNameIsAmbiguous    = "given trip category name is ambiguous"
 	errNoTripWithID               = "no trip with given id"
+
+	errWrongDurationFormat = "wrong duration format (should be: 00h00m00s or 00m00s)"
 
 	errCannotRemoveBicycleType = "cannot remove bicycle type because there are bicycles of this type"
 	errCannotRemoveCategory    = "cannot remove category because there are trips with this category"
@@ -113,6 +116,8 @@ const (
 	appName     = "biclog"
 	fsSeparator = "  "
 
+	nullDataValue = "-"
+
 	notSetIntValue    int     = -1
 	notSetFloatValue  float64 = -1
 	notSetStringValue         = ""
@@ -146,19 +151,20 @@ const (
 	bcSeriesHeading          = "SERIES"
 	bcHeadingSize            = 20
 
-	trpIdHeader           = "ID"
-	trpDateHeader         = "DATE"
-	trpTitleHeader        = "TITLE"
-	trpDistanceHeader     = "DISTANCE"
-	trpDurationHeading    = "DURATION"
-	trpDescriptionHeading = "DESCRIPTION"
-	trpHrMaxHeading       = "HR MAX"
-	trpHrAvgHeading       = "HR AVG"
-	trpSpeedMaxHeading    = "MAX SPEED"
-	trpDrivewaysHeading   = "DRIVEWAYS"
-	trpCaloriesHeading    = "CALORIES"
-	trpTemperatureHeading = "TEMPERATURE"
-	trpHeadingSize        = 15
+	trpIdHeader            = "ID"
+	trpDateHeader          = "DATE"
+	trpTitleHeader         = "TITLE"
+	trpDistanceHeader      = "DISTANCE"
+	trpDurationHeading     = "DURATION"
+	trpDescriptionHeading  = "DESCRIPTION"
+	trpHrMaxHeading        = "HR MAX"
+	trpHrAvgHeading        = "HR AVG"
+	trpSpeedMaxHeading     = "MAX SPEED"
+	trpDrivewaysHeading    = "DRIVEWAYS"
+	trpCaloriesHeading     = "CALORIES"
+	trpTemperatureHeading  = "TEMPERATURE"
+	trpSpeedAverageHeading = "AVERAGE SPEED"
+	trpHeadingSize         = 15
 )
 
 // DB Properties
@@ -175,7 +181,9 @@ func main() {
 	// Set up logger
 	printUserMsg = log.New(os.Stdout, fmt.Sprintf("%s: ", appName), 0)
 	printError = log.New(os.Stderr, fmt.Sprintf("%s: ", appName), 0)
+	//TODO: move logger to separate function and call it from respective functions where necessary
 
+	//TODO: move reading properties to separate function but herein (in this file)
 	// Loading properties from config file if exists
 	configSettings := gprops.New()
 	configFile, err := os.Open(path.Join(os.Getenv("HOME"), ".blrc"))
@@ -218,6 +226,7 @@ SUBCOMMANDS:
 	}
 
 	flagVerbose := cli.BoolFlag{Name: "verbose, v", Usage: "show more output", Destination: &verbose}
+	//TODO: remove flagVerbose and make everything verbose
 	flagFile := cli.StringFlag{Name: "file, f", Value: dataFile, Usage: "data file"}
 	flagType := cli.StringFlag{Name: "type, t", Value: notSetStringValue, Usage: "bicycle type"}
 	flagCategory := cli.StringFlag{Name: "category, c", Value: notSetStringValue, Usage: "trip category"}
@@ -309,7 +318,7 @@ SUBCOMMANDS:
 					Action:  cmdCategoryEdit},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
+					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Edit bicycle details.",
 					Action:  cmdBicycleEdit},
 				{Name: objectTrip,
@@ -373,7 +382,7 @@ CREATE TABLE bicycles (
  , model TEXT
  , bicycle_type_id INTEGER
  , production_year INTEGER
- , buying_date INTEGER
+ , buying_date TEXT
  , description TEXT
  , status INTEGER
  , size TEXT
@@ -385,11 +394,11 @@ CREATE TABLE bicycles (
 CREATE TABLE trips (
  id INTEGER PRIMARY KEY
  , bicycle_id INTEGER
- , date INTEGER
+ , date TEXT
  , title TEXT
  , trip_category_id INTEGER
  , distance REAL
- , duration INTEGER
+ , duration TEXT
  , description TEXT
  , hr_max INTEGER
  , hr_avg INTEGER
@@ -862,9 +871,9 @@ func cmdBicycleList(c *cli.Context) {
 	// List bicycles
 	var listQuery string
 	if c.Bool("all") == true {
-		listQuery = fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id;")
+		listQuery = fmt.Sprintf("SELECT b.id, ifnull(b.name,''), ifnull(b.producer,''), ifnull(b.model,''), ifnull(t.name,'') FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id;")
 	} else {
-		listQuery = fmt.Sprintf("SELECT b.id, b.name, b.producer, b.model, t.name FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"])
+		listQuery = fmt.Sprintf("SELECT b.id, ifnull(b.name,''), ifnull(b.producer,''), ifnull(b.model,''), ifnull(t.name,'') FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"])
 	}
 	rows, err := f.Handler.Query(listQuery)
 	if err != nil {
@@ -882,6 +891,8 @@ func cmdBicycleList(c *cli.Context) {
 	}
 }
 
+//TODO: add to all queries for list/show clause 'ifnull()'
+//TODO: add to all queries filters for all non-numbers attributes attributes
 func cmdBicycleEdit(c *cli.Context) {
 	// Check obligatory flags
 	if c.String("file") == notSetStringValue {
@@ -920,7 +931,7 @@ func cmdBicycleEdit(c *cli.Context) {
 	}
 	bName := c.String("bicycle")
 	if bName != notSetStringValue {
-		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET name=%s WHERE id=%d;", bName, id)
+		sqlUpdateBicycle = sqlUpdateBicycle + fmt.Sprintf("UPDATE bicycles SET name='%s' WHERE id=%d;", bName, id)
 	}
 	bManufacturer := c.String("manufacturer")
 	if bManufacturer != notSetStringValue {
@@ -1116,7 +1127,11 @@ func cmdTripAdd(c *cli.Context) {
 	sqlAddTrip = sqlAddTrip + fmt.Sprintf("INSERT INTO trips (id, bicycle_id, date,title, trip_category_id, distance) VALUES (NULL, %d, '%s', '%s', %d, %f);", tBicycleId, c.String("date"), tTitle, tCategoryId, tDistance)
 	tDuration := c.String("duration")
 	if tDuration != notSetStringValue {
-		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET duration='%s' WHERE id=last_insert_rowid();", tDuration)
+		durationValue, err := time.ParseDuration(tDuration)
+		if err != nil {
+			printError.Fatalln(errWrongDurationFormat)
+		}
+		sqlAddTrip = sqlAddTrip + fmt.Sprintf("UPDATE trips SET duration='%s' WHERE id=last_insert_rowid();", durationValue.String())
 	}
 	tDescription := c.String("description")
 	if tDescription != notSetStringValue {
@@ -1212,15 +1227,15 @@ func cmdTripList(c *cli.Context) {
 		printError.Fatalln(errReadingFromFile)
 	}
 	defer rows.Close()
-	line := strings.Join([]string{fsId, fsDate, fsTitle, fsCategory, fsBicycle, fsDistance}, fsSeparator) + "\n"
-	fmt.Fprintf(os.Stdout, line, trpIdHeader, trpDateHeader, trpTitleHeader, tcNameHeader, bcNameHeader, trpDistanceHeader)
+	line := strings.Join([]string{fsId, fsDate, fsCategory, fsBicycle, fsDistance, fsTitle}, fsSeparator) + "\n"
+	fmt.Fprintf(os.Stdout, line, trpIdHeader, trpDateHeader, tcNameHeader, bcNameHeader, trpDistanceHeader, trpTitleHeader)
 
 	for rows.Next() {
 		var id int
 		var date, title, category, bicycle string
 		var distance float64
 		rows.Scan(&id, &date, &title, &category, &bicycle, &distance)
-		fmt.Fprintf(os.Stdout, line, id, date, title, category, bicycle, distance)
+		fmt.Fprintf(os.Stdout, line, id, date, category, bicycle, distance, title)
 	}
 }
 
@@ -1274,7 +1289,11 @@ func cmdTripEdit(c *cli.Context) {
 	}
 	tDuration := c.String("duration")
 	if tDuration != notSetStringValue {
-		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET duration='%s' WHERE id=%d;", tDuration, id)
+		durationValue, err := time.ParseDuration(tDuration)
+		if err != nil {
+			printError.Fatalln(errWrongDurationFormat)
+		}
+		sqlUpdateTrip = sqlUpdateTrip + fmt.Sprintf("UPDATE trips SET duration='%s' WHERE id=%d;", durationValue.String(), id)
 	}
 	tDescription := c.String("description")
 	if tDescription != notSetStringValue {
@@ -1372,7 +1391,9 @@ func cmdTripShow(c *cli.Context) {
 	defer f.Close()
 
 	// Create formatting strings
-	line := fmt.Sprintf("%%-%dv%%-v\n", trpHeadingSize)
+	lineStr := fmt.Sprintf("%%-%ds%%-s\n", trpHeadingSize)
+	lineInt := fmt.Sprintf("%%-%ds%%-d\n", trpHeadingSize)
+	lineFloat := fmt.Sprintf("%%-%ds%%-.1f\n", trpHeadingSize)
 
 	// Show trip
 	var (
@@ -1386,22 +1407,57 @@ func cmdTripShow(c *cli.Context) {
 		printError.Fatalln(errNoTripWithID)
 	}
 
-	fmt.Printf(line, trpIdHeader, tId)
-	fmt.Printf(line, bcNameHeader, bName)
-	fmt.Printf(line, trpDateHeader, tDate)
-	fmt.Printf(line, trpTitleHeader, tTitle)
-	fmt.Printf(line, tcNameHeader, tCategory)
-	fmt.Printf(line, trpDistanceHeader, tDistance)
-	fmt.Printf(line, trpDurationHeading, tDuration)
-	fmt.Printf(line, trpHrMaxHeading, tHrMax)
-	fmt.Printf(line, trpHrAvgHeading, tHrAvg)
-	fmt.Printf(line, trpSpeedMaxHeading, tSpeedMax)
-	fmt.Printf(line, trpDrivewaysHeading, tDriveways)
-	fmt.Printf(line, trpCaloriesHeading, tCalories)
-	fmt.Printf(line, trpTemperatureHeading, tTemp)
-	fmt.Printf(line, trpDescriptionHeading, tDesc)
-	//TODO: adjust missing values so that '' is shown instead of '-1'
-
+	fmt.Printf(lineInt, trpIdHeader, tId)
+	fmt.Printf(lineStr, bcNameHeader, bName)
+	fmt.Printf(lineStr, trpDateHeader, tDate)
+	fmt.Printf(lineStr, trpTitleHeader, tTitle)
+	fmt.Printf(lineStr, tcNameHeader, tCategory)
+	fmt.Printf(lineFloat, trpDistanceHeader, tDistance)
+	if tDuration != notSetStringValue {
+		fmt.Printf(lineStr, trpDurationHeading, tDuration)
+		durationValue, err := time.ParseDuration(tDuration)
+		if err == nil {
+			fmt.Printf(lineFloat, trpSpeedAverageHeading, tDistance/durationValue.Hours())
+		}
+	} else {
+		fmt.Printf(lineStr, trpDurationHeading, nullDataValue)
+		fmt.Printf(lineStr, trpSpeedAverageHeading, nullDataValue)
+	}
+	if tSpeedMax != 0 {
+		fmt.Printf(lineFloat, trpSpeedMaxHeading, tSpeedMax)
+	} else {
+		fmt.Printf(lineStr, trpSpeedMaxHeading, nullDataValue)
+	}
+	if tDriveways != 0 {
+		fmt.Printf(lineFloat, trpDrivewaysHeading, tDriveways)
+	} else {
+		fmt.Printf(lineStr, trpDrivewaysHeading, nullDataValue)
+	}
+	if tHrMax != 0 {
+		fmt.Printf(lineInt, trpHrMaxHeading, tHrMax)
+	} else {
+		fmt.Printf(lineStr, trpHrMaxHeading, nullDataValue)
+	}
+	if tHrAvg != 0 {
+		fmt.Printf(lineInt, trpHrAvgHeading, tHrAvg)
+	} else {
+		fmt.Printf(lineStr, trpHrAvgHeading, nullDataValue)
+	}
+	if tCalories != 0 {
+		fmt.Printf(lineInt, trpCaloriesHeading, tCalories)
+	} else {
+		fmt.Printf(lineStr, trpCaloriesHeading, nullDataValue)
+	}
+	if tTemp != 0 {
+		fmt.Printf(lineFloat, trpTemperatureHeading, tTemp)
+	} else {
+		fmt.Printf(lineStr, trpTemperatureHeading, nullDataValue)
+	}
+	if tDesc != notSetStringValue {
+		fmt.Printf(lineStr, trpDescriptionHeading, tDesc)
+	} else {
+		fmt.Printf(lineStr, trpDescriptionHeading, nullDataValue)
+	}
 }
 
 // ********************
@@ -1567,7 +1623,7 @@ func bicyclePossibleToDelete(db *sql.DB, id int) bool {
 // bicycleStatusNoForName returns status id for given (part of) status name
 // n - (part of) status name
 func bicycleStatusNoForName(n string) (int, error) {
-	var counter, val int = notSetIntValue, notSetIntValue
+	var counter, val int
 
 	for k, v := range bicycleStatuses {
 		if strings.Contains(k, n) {
@@ -1578,7 +1634,7 @@ func bicycleStatusNoForName(n string) (int, error) {
 
 	switch counter {
 	case 0:
-		return val, errors.New(errNoBicycleStatus)
+		return notSetIntValue, errors.New(errNoBicycleStatus)
 	case 1:
 		return val, nil
 	default:
@@ -1597,3 +1653,8 @@ func bicycleStatusNameForID(n int) string {
 	}
 	return notSetStringValue
 }
+
+/*
+QUERY: report summary
+select b.name as bicycle, sum(t.distance) as distance from trips t left join bicycles b ON t.bicycle_id=b.id where 1=1 and t.date like '%2016%' group by bicycle;
+*/
