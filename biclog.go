@@ -44,7 +44,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -195,10 +194,6 @@ func main() {
 	}
 	configFile.Close()
 	dataFile := configSettings.GetOrDefault(confDataFile, notSetStringValue)
-	verbose, err := strconv.ParseBool(configSettings.GetOrDefault(confVerbose, "false"))
-	if err != nil {
-		verbose = false
-	}
 
 	// Parse user commands and flags
 	cli.CommandHelpTemplate = `
@@ -225,8 +220,6 @@ SUBCOMMANDS:
 		cli.Author{"Marcin 'Zbroju' Zbroinski", "marcin@zbroinski.net"},
 	}
 
-	flagVerbose := cli.BoolFlag{Name: "verbose, v", Usage: "show more output", Destination: &verbose}
-	//TODO: remove flagVerbose and make everything verbose
 	flagFile := cli.StringFlag{Name: "file, f", Value: dataFile, Usage: "data file"}
 	flagType := cli.StringFlag{Name: "type, t", Value: notSetStringValue, Usage: "bicycle type"}
 	flagCategory := cli.StringFlag{Name: "category, c", Value: notSetStringValue, Usage: "trip category"}
@@ -257,107 +250,107 @@ SUBCOMMANDS:
 	app.Commands = []cli.Command{
 		{Name: "init",
 			Aliases: []string{"I"},
-			Flags:   []cli.Flag{flagVerbose, flagFile},
+			Flags:   []cli.Flag{flagFile},
 			Usage:   "Init a new data file specified by the user",
 			Action:  cmdInit},
 		{Name: "add", Aliases: []string{"A"}, Usage: "Add an object (bicycle, bicycle type, trip, trip category).",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagType},
+					Flags:   []cli.Flag{flagFile, flagType},
 					Usage:   "Add new bicycle type.",
 					Action:  cmdTypeAdd},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagCategory},
+					Flags:   []cli.Flag{flagFile, flagCategory},
 					Usage:   "Add new trip category.",
 					Action:  cmdCategoryAdd},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagSize, flagWeight, flagInitialDistance, flagSeries},
+					Flags:   []cli.Flag{flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Add new bicycle.",
 					Action:  cmdBicycleAdd},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagTitle, flagBicycle, flagDate, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
+					Flags:   []cli.Flag{flagFile, flagTitle, flagBicycle, flagDate, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
 					Usage:   "Add new trip.",
 					Action:  cmdTripAdd}}},
 		{Name: "list", Aliases: []string{"L"}, Usage: "List objects (bicycles, bicycle types, trips, trips categories)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Flags:   []cli.Flag{flagFile},
 					Usage:   "List available bicycle types.",
 					Action:  cmdTypeList},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Flags:   []cli.Flag{flagFile},
 					Usage:   "List available trip categories.",
 					Action:  cmdCategoryList},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagAll},
+					Flags:   []cli.Flag{flagFile, flagAll},
 					Usage:   "List available bicycles.",
 					Action:  cmdBicycleList},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile},
+					Flags:   []cli.Flag{flagFile},
 					Usage:   "List available trips.",
 					Action:  cmdTripList}}},
 		{Name: "edit", Aliases: []string{"E"}, Usage: "Edit an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagType},
+					Flags:   []cli.Flag{flagFile, flagId, flagType},
 					Usage:   "Edit bicycle type with given id.",
 					Action:  cmdTypeEdit},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagCategory},
+					Flags:   []cli.Flag{flagFile, flagId, flagCategory},
 					Usage:   "Edit trip category with given id.",
 					Action:  cmdCategoryEdit},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
+					Flags:   []cli.Flag{flagFile, flagId, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Edit bicycle details.",
 					Action:  cmdBicycleEdit},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagBicycle, flagDate, flagTitle, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
+					Flags:   []cli.Flag{flagFile, flagId, flagBicycle, flagDate, flagTitle, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
 					Usage:   "Edit trip details.",
 					Action:  cmdTripEdit}}},
 		{Name: "delete", Aliases: []string{"D"}, Usage: "Delete an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete bicycle type with given id.",
 					Action:  cmdTypeDelete},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete trip category with given id.",
 					Action:  cmdCategoryDelete},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete bicycle with given id.",
 					Action:  cmdBicycleDelete},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete trip with given id.",
 					Action:  cmdTripDelete}}},
 		{Name: "show", Aliases: []string{"S"}, Usage: "Show details of an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId, flagBicycle},
+					Flags:   []cli.Flag{flagFile, flagId, flagBicycle},
 					Usage:   "Shows details of bicycle with given id or bicycle.",
 					Action:  cmdBicycleShow},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
-					Flags:   []cli.Flag{flagVerbose, flagFile, flagId},
+					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Shows details of trip with given id.",
 					Action:  cmdTripShow}}}}
 	app.Run(os.Args)
@@ -422,10 +415,8 @@ CREATE TABLE trip_categories (
 		printError.Fatalln(err)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("created file %s.\n", c.String("file"))
-	}
+	// Show summary
+	printUserMsg.Printf("created file %s.\n", c.String("file"))
 }
 
 func cmdTypeAdd(c *cli.Context) {
@@ -453,10 +444,8 @@ func cmdTypeAdd(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("added new bicycle type: %s\n", c.String("type"))
-	}
+	// Show summary
+	printUserMsg.Printf("added new bicycle type: %s\n", c.String("type"))
 }
 
 func cmdTypeList(c *cli.Context) {
@@ -537,10 +526,8 @@ func cmdTypeEdit(c *cli.Context) {
 		printError.Fatalln(errNoBicycleWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("change bicycle type name to '%s'\n", newName)
-	}
+	// Show summary
+	printUserMsg.Printf("change bicycle type name to '%s'\n", newName)
 }
 
 func cmdTypeDelete(c *cli.Context) {
@@ -576,10 +563,8 @@ func cmdTypeDelete(c *cli.Context) {
 		printError.Fatalln(errNoBicycleTypeWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("deleted bicycle type with id = %d\n", id)
-	}
+	// Show summary
+	printUserMsg.Printf("deleted bicycle type with id = %d\n", id)
 }
 
 func cmdCategoryAdd(c *cli.Context) {
@@ -606,10 +591,8 @@ func cmdCategoryAdd(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("added new trip category: %s\n", c.String("category"))
-	}
+	// Show summary
+	printUserMsg.Printf("added new trip category: %s\n", c.String("category"))
 }
 
 func cmdCategoryList(c *cli.Context) {
@@ -690,10 +673,8 @@ func cmdCategoryEdit(c *cli.Context) {
 		printError.Fatalln(errNoCategoryWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("change trip category name to '%s'\n", newName)
-	}
+	// Show summary
+	printUserMsg.Printf("change trip category name to '%s'\n", newName)
 }
 
 func cmdCategoryDelete(c *cli.Context) {
@@ -729,10 +710,8 @@ func cmdCategoryDelete(c *cli.Context) {
 		printError.Fatalln(errNoCategoryWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("deleted trip category with id = %d\n", id)
-	}
+	// Show summary
+	printUserMsg.Printf("deleted trip category with id = %d\n", id)
 }
 
 func cmdBicycleAdd(c *cli.Context) {
@@ -815,10 +794,8 @@ func cmdBicycleAdd(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("added new bicycle: %s\n", bName)
-	}
+	// Show summary
+	printUserMsg.Printf("added new bicycle: %s\n", bName)
 }
 
 func cmdBicycleList(c *cli.Context) {
@@ -978,10 +955,8 @@ func cmdBicycleEdit(c *cli.Context) {
 		printError.Fatalln(errNoBicycleWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("changed bicycle details\n")
-	}
+	// Show summary
+	printUserMsg.Printf("changed bicycle details\n")
 }
 
 func cmdBicycleDelete(c *cli.Context) {
@@ -1017,10 +992,8 @@ func cmdBicycleDelete(c *cli.Context) {
 		printError.Fatalln(errNoBicycleWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("deleted bicycle with id = %d\n", id)
-	}
+	// Show summary
+	printUserMsg.Printf("deleted bicycle with id = %d\n", id)
 }
 
 func cmdBicycleShow(c *cli.Context) {
@@ -1168,10 +1141,8 @@ func cmdTripAdd(c *cli.Context) {
 		printError.Fatalln(errWritingToFile)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("added new trip: '%s'\n", tTitle)
-	}
+	// Show summary
+	printUserMsg.Printf("added new trip: '%s'\n", tTitle)
 }
 
 func cmdTripList(c *cli.Context) {
@@ -1332,10 +1303,8 @@ func cmdTripEdit(c *cli.Context) {
 		printError.Fatalln(errNoBicycleWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("changed trip details\n")
-	}
+	// Show summary
+	printUserMsg.Printf("changed trip details\n")
 }
 
 func cmdTripDelete(c *cli.Context) {
@@ -1366,10 +1335,8 @@ func cmdTripDelete(c *cli.Context) {
 		printError.Fatalln(errNoTripWithID)
 	}
 
-	// Show summary if verbose
-	if c.Bool("verbose") == true {
-		printUserMsg.Printf("deleted tirp with id = %d\n", id)
-	}
+	// Show summary
+	printUserMsg.Printf("deleted tirp with id = %d\n", id)
 }
 
 func cmdTripShow(c *cli.Context) {
