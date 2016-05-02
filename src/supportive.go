@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/codegangsta/cli"
 	"github.com/zbroju/gprops"
 	"log"
 	"os"
@@ -225,4 +226,49 @@ func bicycleStatusNameForID(n int) string {
 		}
 	}
 	return NotSetStringValue
+}
+
+// sqlReportSubQuery returns sql query string with all trips and
+// associated data with filters for all relevant fields
+func sqlTripsSubQuery(db *sql.DB, c *cli.Context) (sqlString string, err error) {
+	sqlString = "SELECT" +
+		" b.name as bicycle" +
+		",bt.name as type" +
+		",t.date as date" +
+		",t.title as title" +
+		",tc.name as category" +
+		",t.distance as distance" +
+		",t.duration as duration" +
+		" FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN bicycle_types bt ON b.bicycle_type_id=bt.id LEFT JOIN trip_categories tc ON t.trip_category_id=tc.id"
+	sqlString = fmt.Sprintf("%s WHERE 1=1", sqlString)
+
+	bType := c.String("type")
+	if bType != NotSetStringValue {
+		bTypeID, err := bicycleTypeIDForName(db, bType)
+		if err != nil {
+			return NotSetStringValue, err
+		}
+		sqlString = fmt.Sprintf("%s AND bt.id=%d", sqlString, bTypeID)
+	}
+
+	tCategory := c.String("category")
+	if tCategory != NotSetStringValue {
+		tCategoryID, err := tripCategoryIDForName(db, tCategory)
+		if err != nil {
+			return NotSetStringValue, err
+		}
+		sqlString = fmt.Sprintf("%s AND tc.id=%d", sqlString, tCategoryID)
+	}
+
+	bName := c.String("bicycle")
+	if bName != NotSetStringValue {
+		sqlString = fmt.Sprintf("%s AND b.name LIKE '%%%s%%'", sqlString, bName)
+	}
+
+	tDate := c.String("date")
+	if tDate != NotSetStringValue {
+		sqlString = fmt.Sprintf("%s AND t.date LIKE '%%%s%%'", sqlString, tDate)
+	}
+
+	return sqlString, nil
 }

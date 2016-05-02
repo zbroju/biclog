@@ -482,6 +482,8 @@ func CmdBicycleAdd(c *cli.Context) {
 }
 
 func CmdBicycleList(c *cli.Context) {
+	//TODO: add query with filters for bicycle list
+	//TODO: use the query with filters, remember about adding flags for filters
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -793,6 +795,10 @@ func CmdTripAdd(c *cli.Context) {
 	if c.String("file") == NotSetStringValue {
 		printError.Fatalln(errMissingFileFlag)
 	}
+	tDate := c.String("date")
+	if tDate == NotSetStringValue {
+		tDate = time.Now().Format("2006-01-02")
+	}
 	tTitle := c.String("title")
 	if tTitle == NotSetStringValue {
 		printError.Fatalln(errMissingTitleFlag)
@@ -829,7 +835,7 @@ func CmdTripAdd(c *cli.Context) {
 	}
 
 	sqlAddTrip := fmt.Sprintf("BEGIN TRANSACTION;")
-	sqlAddTrip = sqlAddTrip + fmt.Sprintf("INSERT INTO trips (id, bicycle_id, date,title, trip_category_id, distance) VALUES (NULL, %d, '%s', '%s', %d, %f);", tBicycleId, c.String("date"), tTitle, tCategoryId, tDistance)
+	sqlAddTrip = sqlAddTrip + fmt.Sprintf("INSERT INTO trips (id, bicycle_id, date,title, trip_category_id, distance) VALUES (NULL, %d, '%s', '%s', %d, %f);", tBicycleId, tDate, tTitle, tCategoryId, tDistance)
 	tDuration := c.String("duration")
 	if tDuration != NotSetStringValue {
 		durationValue, err := time.ParseDuration(tDuration)
@@ -878,6 +884,7 @@ func CmdTripAdd(c *cli.Context) {
 }
 
 func CmdTripList(c *cli.Context) {
+	//TODO: change query so that it uses the one with filters, remember to add flags for filters
 	// Get loggers
 	_, printError := GetLoggers()
 
