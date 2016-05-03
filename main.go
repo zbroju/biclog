@@ -27,7 +27,7 @@
 //DONE: command - trip delete
 //DONE: command - trip show details
 //DONE: command - report summary
-//TODO: command - report history
+//DONE: command - report history
 //TODO: command - report pie chart (share of bicycles)
 //TODO: command - report bar chart (history)
 //DONE: fix issue so that searching by bicycle name, trip category, bicycle type is irrespective of capitals
@@ -51,8 +51,10 @@ const (
 	objectTrip              = "trip"
 	objectTripAlias         = "tr"
 
-	objectReportSummary       = "summary"
-	objectReportSummaryAliast = "s"
+	objectReportSummary      = "summary"
+	objectReportSummaryAlias = "s"
+	objectReportMonthly      = "monthly"
+	objectReportMonthlyAlias = "m"
 )
 
 func main() {
@@ -226,10 +228,15 @@ SUBCOMMANDS:
 		{Name: "report", Aliases: []string{"R"}, Usage: "Show report",
 			Subcommands: []cli.Command{
 				{Name: objectReportSummary,
-					Aliases: []string{objectReportSummaryAliast},
+					Aliases: []string{objectReportSummaryAlias},
 					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "Shows summary of distance per bicycle.",
 					Action:  ReportSummary},
+				{Name: objectReportMonthly,
+					Aliases: []string{objectReportMonthlyAlias},
+					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
+					Usage:   "Shows summary of distance per month.",
+					Action:  ReportMonthly},
 			}}}
 	app.Run(os.Args)
 }
