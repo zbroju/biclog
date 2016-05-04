@@ -166,7 +166,7 @@ SUBCOMMANDS:
 					Action:  CmdBicycleList},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
-					Flags:   []cli.Flag{flagFile},
+					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "List available trips.",
 					Action:  CmdTripList}}},
 		{Name: "edit", Aliases: []string{"E"}, Usage: "Edit an object (bicycle, bicycle type, trip, trip category)",

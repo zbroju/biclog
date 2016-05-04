@@ -884,7 +884,6 @@ func CmdTripAdd(c *cli.Context) {
 }
 
 func CmdTripList(c *cli.Context) {
-	//TODO: change query so that it uses the one with filters, remember to add flags for filters
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -901,9 +900,16 @@ func CmdTripList(c *cli.Context) {
 	}
 	defer f.Close()
 
+	// SQL query
+	sqlSubQuery, err := sqlTripsSubQuery(f.Handler, c)
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	sqlQueryData := fmt.Sprintf("SELECT id, date, title, category, bicycle, distance FROM (%s) ORDER BY date", sqlSubQuery)
+
 	// Create formatting strings
 	var lId, lDate, lTitle, lCategory, lBicycle, lDistance int
-	maxQuery := fmt.Sprintf("SELECT max(length(t.id)), ifnull(max(length(t.date)),0), ifnull(max(length(t.title)),0), ifnull(max(length(c.name)),0), ifnull(max(length(b.name)),0), ifnull(max(length(t.distance)),0) FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN trip_categories c ON t.trip_category_id=c.id;")
+	maxQuery := fmt.Sprintf("SELECT max(length(id)), ifnull(max(length(date)),0), ifnull(max(length(title)),0), ifnull(max(length(category)),0), ifnull(max(length(bicycle)),0), ifnull(max(length(distance)),0) FROM (%s);", sqlQueryData)
 	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lDate, &lTitle, &lCategory, &lBicycle, &lDistance)
 	if err != nil {
 		printError.Fatalln("no trips")
@@ -935,7 +941,7 @@ func CmdTripList(c *cli.Context) {
 	fsDistance := fmt.Sprintf("%%%dv", lDistance)
 
 	// List bicycles
-	rows, err := f.Handler.Query(fmt.Sprintf("SELECT t.id, ifnull(t.date,''), ifnull(t.title,''), ifnull(c.name,''), ifnull(b.name,''), ifnull(t.distance,0) FROM trips t LEFT JOIN bicycles b ON t.bicycle_id=b.id LEFT JOIN trip_categories c ON t.trip_category_id=c.id;"))
+	rows, err := f.Handler.Query(fmt.Sprintf("%s;", sqlQueryData))
 	if err != nil {
 		printError.Fatalln(errReadingFromFile)
 	}

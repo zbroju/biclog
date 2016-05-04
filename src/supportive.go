@@ -232,7 +232,8 @@ func bicycleStatusNameForID(n int) string {
 // associated data with filters for all relevant fields
 func sqlTripsSubQuery(db *sql.DB, c *cli.Context) (sqlString string, err error) {
 	sqlString = "SELECT" +
-		" b.name as bicycle" +
+		" t.id as id" +
+		",b.name as bicycle" +
 		",bt.name as type" +
 		",t.date as date" +
 		",t.title as title" +
