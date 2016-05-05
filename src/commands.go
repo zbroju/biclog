@@ -535,7 +535,6 @@ func CmdBicycleList(c *cli.Context) {
 
 	// List bicycles
 	rows, err := f.Handler.Query(fmt.Sprintf("%s;", sqlQueryData))
-	fmt.Println(fmt.Sprintf("%s;", sqlQueryData))
 	if err != nil {
 		printError.Fatalln(errReadingFromFile)
 	}

@@ -53,6 +53,8 @@ const (
 
 	objectReportSummary      = "summary"
 	objectReportSummaryAlias = "s"
+	objectReportYearly       = "yearly"
+	objectReportYearlyAlias  = "y"
 	objectReportMonthly      = "monthly"
 	objectReportMonthlyAlias = "m"
 )
@@ -237,6 +239,11 @@ SUBCOMMANDS:
 					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "Shows summary of distance per month.",
 					Action:  ReportMonthly},
+				{Name: objectReportYearly,
+					Aliases: []string{objectReportYearlyAlias},
+					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
+					Usage:   "Shows summary of distance per year.",
+					Action:  ReportYearly},
 			}}}
 	app.Run(os.Args)
 }
