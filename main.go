@@ -161,7 +161,7 @@ SUBCOMMANDS:
 					Action:  CmdCategoryList},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
-					Flags:   []cli.Flag{flagFile, flagAll},
+					Flags:   []cli.Flag{flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagAll},
 					Usage:   "List available bicycles.",
 					Action:  CmdBicycleList},
 				{Name: objectTrip,

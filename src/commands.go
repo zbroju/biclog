@@ -482,8 +482,6 @@ func CmdBicycleAdd(c *cli.Context) {
 }
 
 func CmdBicycleList(c *cli.Context) {
-	//TODO: add query with filters for bicycle list
-	//TODO: use the query with filters, remember about adding flags for filters
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -500,14 +498,16 @@ func CmdBicycleList(c *cli.Context) {
 	}
 	defer f.Close()
 
+	// SQL query
+	sqlSubQuery, err := sqlBicyclesSubQuery(f.Handler, c)
+	if err != nil {
+		printError.Fatalln(err)
+	}
+	sqlQueryData := fmt.Sprintf("SELECT id, bicycle, producer, model, type FROM (%s)", sqlSubQuery)
+
 	// Create formatting strings
 	var lId, lName, lProducer, lModel, lType int
-	var maxQuery string
-	if c.Bool("all") == true {
-		maxQuery = fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id;")
-	} else {
-		maxQuery = fmt.Sprintf("SELECT max(length(b.id)), max(length(b.name)), ifnull(max(length(b.producer)),0), ifnull(max(length(b.model)),0), ifnull(max(length(t.name)),0) FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"])
-	}
+	maxQuery := fmt.Sprintf("SELECT max(length(id)), max(length(bicycle)), ifnull(max(length(producer)),0), ifnull(max(length(model)),0), ifnull(max(length(type)),0) FROM (%s);", sqlQueryData)
 	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lName, &lProducer, &lModel, &lType)
 	if err != nil {
 		printError.Fatalln("no bicycles")
@@ -534,13 +534,8 @@ func CmdBicycleList(c *cli.Context) {
 	fsType := fmt.Sprintf("%%-%dv", lType)
 
 	// List bicycles
-	var listQuery string
-	if c.Bool("all") == true {
-		listQuery = fmt.Sprintf("SELECT b.id, ifnull(b.name,''), ifnull(b.producer,''), ifnull(b.model,''), ifnull(t.name,'') FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id;")
-	} else {
-		listQuery = fmt.Sprintf("SELECT b.id, ifnull(b.name,''), ifnull(b.producer,''), ifnull(b.model,''), ifnull(t.name,'') FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.status=%d;", bicycleStatuses["owned"])
-	}
-	rows, err := f.Handler.Query(listQuery)
+	rows, err := f.Handler.Query(fmt.Sprintf("%s;", sqlQueryData))
+	fmt.Println(fmt.Sprintf("%s;", sqlQueryData))
 	if err != nil {
 		printError.Fatalln(errReadingFromFile)
 	}

@@ -15,6 +15,7 @@ import (
 	"strings"
 )
 
+// GetConfigSettings returns contents of settings file (~/.blrc)
 func GetConfigSettings() (dataFile string, err error) {
 	// Read config file
 	configSettings := gprops.New()
@@ -31,6 +32,7 @@ func GetConfigSettings() (dataFile string, err error) {
 	return dataFile, nil
 }
 
+// GetLoggers returns two loggers for standard formatting of messages and errors
 func GetLoggers() (messageLogger *log.Logger, errorLogger *log.Logger) {
 	messageLogger = log.New(os.Stdout, fmt.Sprintf("%s: ", AppName), 0)
 	errorLogger = log.New(os.Stderr, fmt.Sprintf("%s: ", AppName), 0)
@@ -228,7 +230,7 @@ func bicycleStatusNameForID(n int) string {
 	return NotSetStringValue
 }
 
-// sqlReportSubQuery returns sql query string with all trips and
+// sqlTripsSubQuery returns sql query string with all trips and
 // associated data with filters for all relevant fields
 func sqlTripsSubQuery(db *sql.DB, c *cli.Context) (sqlString string, err error) {
 	sqlString = "SELECT" +
@@ -269,6 +271,49 @@ func sqlTripsSubQuery(db *sql.DB, c *cli.Context) (sqlString string, err error) 
 	tDate := c.String("date")
 	if tDate != NotSetStringValue {
 		sqlString = fmt.Sprintf("%s AND t.date LIKE '%%%s%%'", sqlString, tDate)
+	}
+
+	return sqlString, nil
+}
+
+// sqlReportSubQuery returns sql query string with all trips and
+// associated data with filters for all relevant fields
+func sqlBicyclesSubQuery(db *sql.DB, c *cli.Context) (sqlString string, err error) {
+	sqlString = "SELECT" +
+		" b.id as id" +
+		",b.name as bicycle" +
+		",b.producer as producer" +
+		",b.model as model" +
+		",t.name as type" +
+		" FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id"
+	sqlString = fmt.Sprintf("%s WHERE 1=1", sqlString)
+
+	bName := c.String("bicycle")
+	if bName != NotSetStringValue {
+		sqlString = fmt.Sprintf("%s AND b.name LIKE '%%%s%%'", sqlString, bName)
+	}
+
+	bProducer := c.String("manufacturer")
+	if bProducer != NotSetStringValue {
+		sqlString = fmt.Sprintf("%s AND b.producer LIKE '%%%s%%'", sqlString, bProducer)
+	}
+
+	bModel := c.String("model")
+	if bModel != NotSetStringValue {
+		sqlString = fmt.Sprintf("%s AND b.model LIKE '%%%s%%'", sqlString, bModel)
+	}
+
+	bType := c.String("type")
+	if bType != NotSetStringValue {
+		bTypeID, err := bicycleTypeIDForName(db, bType)
+		if err != nil {
+			return NotSetStringValue, err
+		}
+		sqlString = fmt.Sprintf("%s AND t.id=%d", sqlString, bTypeID)
+	}
+
+	if c.Bool("all") == false {
+		sqlString = fmt.Sprintf("%s AND b.status=%d", sqlString, bicycleStatuses["owned"])
 	}
 
 	return sqlString, nil
