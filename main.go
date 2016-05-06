@@ -28,8 +28,6 @@
 //DONE: command - trip show details
 //DONE: command - report summary
 //DONE: command - report history
-//TODO: command - report pie chart (share of bicycles)
-//TODO: command - report bar chart (history)
 //DONE: fix issue so that searching by bicycle name, trip category, bicycle type is irrespective of capitals
 //DONE: move all function except for main() to /lib folder
 package main
@@ -89,7 +87,7 @@ SUBCOMMANDS:
 	app := cli.NewApp()
 	app.Name = AppName
 	app.Usage = "keeps track of you bike rides"
-	app.Version = "0.0.1"
+	app.Version = "1.0.0"
 	app.Authors = []cli.Author{
 		cli.Author{"Marcin 'Zbroju' Zbroinski", "marcin@zbroinski.net"},
 	}

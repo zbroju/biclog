@@ -24,7 +24,6 @@ const (
 	errNoBicycleTypeWithID        = "no bicycle type with given id"
 	errNoCategoryWithID           = "no trip categories with given id"
 	errNoCategoryForName          = "no trip category for given name"
-	errNoBicycleStatusForId       = "no bicycle status for given id"
 	errNoBicycleTypesForName      = "no bicycle types for given name"
 	errNoBicycleStatus            = "unknown bicycle status"
 	errBicycleStatusIsAmbiguous   = "given bicycle status is ambiguous"
