@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-func ReportSummary(c *cli.Context) {
+func ReportSummary(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -78,9 +78,11 @@ func ReportSummary(c *cli.Context) {
 	// Print total distance
 	fmt.Fprintf(os.Stdout, lineHeader, strings.Repeat("-", maxLBicycle), strings.Repeat("-", maxLType), strings.Repeat("-", maxLDistance))
 	fmt.Fprintf(os.Stdout, lineData, "TOTAL", NotSetStringValue, distanceTotal)
+
+	return nil
 }
 
-func ReportMonthly(c *cli.Context) {
+func ReportMonthly(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -142,9 +144,11 @@ func ReportMonthly(c *cli.Context) {
 	// Print total distance
 	fmt.Fprintf(os.Stdout, lineHeader, strings.Repeat("-", maxLMonth), strings.Repeat("-", maxLDistance))
 	fmt.Fprintf(os.Stdout, lineData, "SUM.", distanceTotal)
+
+	return nil
 }
 
-func ReportYearly(c *cli.Context) {
+func ReportYearly(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -206,4 +210,6 @@ func ReportYearly(c *cli.Context) {
 	// Print total distance
 	fmt.Fprintf(os.Stdout, lineHeader, strings.Repeat("-", maxYear), strings.Repeat("-", maxLDistance))
 	fmt.Fprintf(os.Stdout, lineData, "SUM.", distanceTotal)
+
+	return nil
 }

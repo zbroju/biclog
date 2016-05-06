@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 )
 
-func CmdInit(c *cli.Context) {
+func CmdInit(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -73,9 +73,11 @@ CREATE TABLE trip_categories (
 
 	// Show summary
 	printUserMsg.Printf("created file %s.\n", c.String("file"))
+
+	return nil
 }
 
-func CmdTypeAdd(c *cli.Context) {
+func CmdTypeAdd(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -105,9 +107,11 @@ func CmdTypeAdd(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("added new bicycle type: %s\n", c.String("type"))
+
+	return nil
 }
 
-func CmdTypeList(c *cli.Context) {
+func CmdTypeList(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -154,9 +158,11 @@ func CmdTypeList(c *cli.Context) {
 		rows.Scan(&id, &name)
 		fmt.Fprintf(os.Stdout, line, id, name)
 	}
+
+	return nil
 }
 
-func CmdTypeEdit(c *cli.Context) {
+func CmdTypeEdit(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -193,9 +199,11 @@ func CmdTypeEdit(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("change bicycle type name to '%s'\n", newName)
+
+	return nil
 }
 
-func CmdTypeDelete(c *cli.Context) {
+func CmdTypeDelete(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -233,9 +241,11 @@ func CmdTypeDelete(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("deleted bicycle type with id = %d\n", id)
+
+	return nil
 }
 
-func CmdCategoryAdd(c *cli.Context) {
+func CmdCategoryAdd(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -264,9 +274,11 @@ func CmdCategoryAdd(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("added new trip category: %s\n", c.String("category"))
+
+	return nil
 }
 
-func CmdCategoryList(c *cli.Context) {
+func CmdCategoryList(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -313,9 +325,11 @@ func CmdCategoryList(c *cli.Context) {
 		rows.Scan(&id, &name)
 		fmt.Fprintf(os.Stdout, line, id, name)
 	}
+
+	return nil
 }
 
-func CmdCategoryEdit(c *cli.Context) {
+func CmdCategoryEdit(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -352,9 +366,11 @@ func CmdCategoryEdit(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("change trip category name to '%s'\n", newName)
+
+	return nil
 }
 
-func CmdCategoryDelete(c *cli.Context) {
+func CmdCategoryDelete(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -392,9 +408,11 @@ func CmdCategoryDelete(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("deleted trip category with id = %d\n", id)
+
+	return nil
 }
 
-func CmdBicycleAdd(c *cli.Context) {
+func CmdBicycleAdd(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -479,9 +497,11 @@ func CmdBicycleAdd(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("added new bicycle: %s\n", bName)
+
+	return nil
 }
 
-func CmdBicycleList(c *cli.Context) {
+func CmdBicycleList(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -548,9 +568,11 @@ func CmdBicycleList(c *cli.Context) {
 		rows.Scan(&id, &name, &producer, &model, &bicType)
 		fmt.Fprintf(os.Stdout, line, id, name, producer, model, bicType)
 	}
+
+	return nil
 }
 
-func CmdBicycleEdit(c *cli.Context) {
+func CmdBicycleEdit(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -640,9 +662,11 @@ func CmdBicycleEdit(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("changed bicycle details\n")
+
+	return nil
 }
 
-func CmdBicycleDelete(c *cli.Context) {
+func CmdBicycleDelete(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -680,9 +704,11 @@ func CmdBicycleDelete(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("deleted bicycle with id = %d\n", id)
+
+	return nil
 }
 
-func CmdBicycleShow(c *cli.Context) {
+func CmdBicycleShow(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -779,9 +805,11 @@ func CmdBicycleShow(c *cli.Context) {
 	} else {
 		fmt.Printf(lineStr, bcDescriptionHeading, NullDataValue)
 	}
+
+	return nil
 }
 
-func CmdTripAdd(c *cli.Context) {
+func CmdTripAdd(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -875,9 +903,11 @@ func CmdTripAdd(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("added new trip: '%s'\n", tTitle)
+
+	return nil
 }
 
-func CmdTripList(c *cli.Context) {
+func CmdTripList(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -950,9 +980,11 @@ func CmdTripList(c *cli.Context) {
 		rows.Scan(&id, &date, &title, &category, &bicycle, &distance)
 		fmt.Fprintf(os.Stdout, line, id, date, category, bicycle, distance, title)
 	}
+
+	return nil
 }
 
-func CmdTripEdit(c *cli.Context) {
+func CmdTripEdit(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -1050,9 +1082,11 @@ func CmdTripEdit(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("changed trip details\n")
+
+	return nil
 }
 
-func CmdTripDelete(c *cli.Context) {
+func CmdTripDelete(c *cli.Context) error {
 	// Get loggers
 	printUserMsg, printError := GetLoggers()
 
@@ -1085,9 +1119,11 @@ func CmdTripDelete(c *cli.Context) {
 
 	// Show summary
 	printUserMsg.Printf("deleted tirp with id = %d\n", id)
+
+	return nil
 }
 
-func CmdTripShow(c *cli.Context) {
+func CmdTripShow(c *cli.Context) error {
 	// Get loggers
 	_, printError := GetLoggers()
 
@@ -1176,4 +1212,6 @@ func CmdTripShow(c *cli.Context) {
 	} else {
 		fmt.Printf(lineStr, trpDescriptionHeading, NullDataValue)
 	}
+
+	return nil
 }
