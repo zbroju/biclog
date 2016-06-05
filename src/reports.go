@@ -213,3 +213,5 @@ func ReportYearly(c *cli.Context) error {
 
 	return nil
 }
+
+//TODO: add report - chart of workload via gnuplot
