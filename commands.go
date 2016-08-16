@@ -1,11 +1,12 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package src
+
+package main
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 	"github.com/zbroju/gsqlitehandler"
 	"os"
 	"strings"
@@ -13,9 +14,9 @@ import (
 	"unicode/utf8"
 )
 
-func CmdInit(c *cli.Context) error {
+func cmdInit(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check the obligatory parameters and exit if missing
 	if c.String("file") == NotSetStringValue {
@@ -66,6 +67,7 @@ CREATE TABLE trip_categories (
 );
 `
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
+
 	err := f.CreateNew(sqlCreateTables)
 	if err != nil {
 		printError.Fatalln(err)
@@ -77,9 +79,9 @@ CREATE TABLE trip_categories (
 	return nil
 }
 
-func CmdTypeAdd(c *cli.Context) error {
+func cmdTypeAdd(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags (file, name)
 	if c.String("file") == NotSetStringValue {
@@ -92,16 +94,14 @@ func CmdTypeAdd(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
 
 	// Add new type
 	sqlAddType := fmt.Sprintf("INSERT INTO bicycle_types VALUES (NULL, '%s');", c.String("type"))
-	_, err = f.Handler.Exec(sqlAddType)
-	if err != nil {
+	if _, err := f.Handler.Exec(sqlAddType); err != nil {
 		printError.Fatalln(errWritingToFile)
 	}
 
@@ -111,9 +111,9 @@ func CmdTypeAdd(c *cli.Context) error {
 	return nil
 }
 
-func CmdTypeList(c *cli.Context) error {
+func cmdTypeList(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -122,16 +122,14 @@ func CmdTypeList(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
 
 	// Create formatting strings
 	var maxLId, maxLName int
-	err = f.Handler.QueryRow("SELECT max(length(id)), max(length(name)) FROM bicycle_types;").Scan(&maxLId, &maxLName)
-	if err != nil {
+	if err := f.Handler.QueryRow("SELECT max(length(id)), max(length(name)) FROM bicycle_types;").Scan(&maxLId, &maxLName); err != nil {
 		printError.Fatalln("no bicycle types")
 	}
 	if hlId := utf8.RuneCountInString(btIdHeader); maxLId < hlId {
@@ -162,9 +160,9 @@ func CmdTypeList(c *cli.Context) error {
 	return nil
 }
 
-func CmdTypeEdit(c *cli.Context) error {
+func cmdTypeEdit(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -181,8 +179,7 @@ func CmdTypeEdit(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -203,9 +200,9 @@ func CmdTypeEdit(c *cli.Context) error {
 	return nil
 }
 
-func CmdTypeDelete(c *cli.Context) error {
+func cmdTypeDelete(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -218,8 +215,7 @@ func CmdTypeDelete(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -245,9 +241,9 @@ func CmdTypeDelete(c *cli.Context) error {
 	return nil
 }
 
-func CmdCategoryAdd(c *cli.Context) error {
+func cmdCategoryAdd(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags (file, name)
 	if c.String("file") == NotSetStringValue {
@@ -259,16 +255,14 @@ func CmdCategoryAdd(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
 
 	// Add new category
 	sqlAddCategory := fmt.Sprintf("INSERT INTO trip_categories VALUES (NULL, '%s');", c.String("category"))
-	_, err = f.Handler.Exec(sqlAddCategory)
-	if err != nil {
+	if _, err := f.Handler.Exec(sqlAddCategory); err != nil {
 		printError.Fatalln(errWritingToFile)
 	}
 
@@ -278,9 +272,9 @@ func CmdCategoryAdd(c *cli.Context) error {
 	return nil
 }
 
-func CmdCategoryList(c *cli.Context) error {
+func cmdCategoryList(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -289,16 +283,14 @@ func CmdCategoryList(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
 
 	// Create formatting strings
 	var maxLId, maxLName int
-	err = f.Handler.QueryRow("SELECT max(length(id)), max(length(name)) FROM trip_categories;").Scan(&maxLId, &maxLName)
-	if err != nil {
+	if err := f.Handler.QueryRow("SELECT max(length(id)), max(length(name)) FROM trip_categories;").Scan(&maxLId, &maxLName); err != nil {
 		printError.Fatalln("no trip categories")
 	}
 	if hlId := utf8.RuneCountInString(tcIdHeader); maxLId < hlId {
@@ -329,9 +321,9 @@ func CmdCategoryList(c *cli.Context) error {
 	return nil
 }
 
-func CmdCategoryEdit(c *cli.Context) error {
+func cmdCategoryEdit(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -348,8 +340,7 @@ func CmdCategoryEdit(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -370,9 +361,9 @@ func CmdCategoryEdit(c *cli.Context) error {
 	return nil
 }
 
-func CmdCategoryDelete(c *cli.Context) error {
+func cmdCategoryDelete(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -385,8 +376,7 @@ func CmdCategoryDelete(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -412,9 +402,9 @@ func CmdCategoryDelete(c *cli.Context) error {
 	return nil
 }
 
-func CmdBicycleAdd(c *cli.Context) error {
+func cmdBicycleAdd(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags (file, bicycle, bicycle type)
 	if c.String("file") == NotSetStringValue {
@@ -431,8 +421,7 @@ func CmdBicycleAdd(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -490,8 +479,7 @@ func CmdBicycleAdd(c *cli.Context) error {
 		sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("UPDATE bicycles SET series_no='%s' WHERE id=last_insert_rowid();", bSeries)
 	}
 	sqlAddBicycle = sqlAddBicycle + fmt.Sprintf("COMMIT;")
-	_, err = f.Handler.Exec(sqlAddBicycle)
-	if err != nil {
+	if _, err = f.Handler.Exec(sqlAddBicycle); err != nil {
 		printError.Fatalln(errWritingToFile)
 	}
 
@@ -501,9 +489,9 @@ func CmdBicycleAdd(c *cli.Context) error {
 	return nil
 }
 
-func CmdBicycleList(c *cli.Context) error {
+func cmdBicycleList(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -512,8 +500,7 @@ func CmdBicycleList(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -528,8 +515,7 @@ func CmdBicycleList(c *cli.Context) error {
 	// Create formatting strings
 	var lId, lName, lProducer, lModel, lType int
 	maxQuery := fmt.Sprintf("SELECT max(length(id)), max(length(bicycle)), ifnull(max(length(producer)),0), ifnull(max(length(model)),0), ifnull(max(length(type)),0) FROM (%s);", sqlQueryData)
-	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lName, &lProducer, &lModel, &lType)
-	if err != nil {
+	if err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lName, &lProducer, &lModel, &lType); err != nil {
 		printError.Fatalln("no bicycles")
 	}
 	if hl := utf8.RuneCountInString(bcIdHeader); lId < hl {
@@ -572,9 +558,9 @@ func CmdBicycleList(c *cli.Context) error {
 	return nil
 }
 
-func CmdBicycleEdit(c *cli.Context) error {
+func cmdBicycleEdit(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -587,8 +573,7 @@ func CmdBicycleEdit(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -666,9 +651,9 @@ func CmdBicycleEdit(c *cli.Context) error {
 	return nil
 }
 
-func CmdBicycleDelete(c *cli.Context) error {
+func cmdBicycleDelete(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -681,8 +666,7 @@ func CmdBicycleDelete(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -708,9 +692,11 @@ func CmdBicycleDelete(c *cli.Context) error {
 	return nil
 }
 
-func CmdBicycleShow(c *cli.Context) error {
+func cmdBicycleShow(c *cli.Context) error {
+	var err error
+
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -727,8 +713,7 @@ func CmdBicycleShow(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -751,8 +736,7 @@ func CmdBicycleShow(c *cli.Context) error {
 		bWeight, bIDist                                                float64
 	)
 	showQuery := fmt.Sprintf("SELECT b.id, ifnull(b.name,''), ifnull(b.producer,''), ifnull(b.model,''), ifnull(t.name,''), ifnull(b.production_year,0), ifnull(b.buying_date,0), ifnull(b.description,''), ifnull(b.status,0), ifnull(b.size,''), ifnull(b.weight,0), ifnull(b.initial_distance,0), ifnull(b.series_no,'') FROM bicycles b LEFT JOIN bicycle_types t ON b.bicycle_type_id=t.id WHERE b.id=%d;", bcID)
-	err = f.Handler.QueryRow(showQuery).Scan(&bId, &bName, &bProducer, &bModel, &bType, &bPYear, &bBDate, &bDesc, &bStatId, &bSize, &bWeight, &bIDist, &bSeries)
-	if err != nil {
+	if err := f.Handler.QueryRow(showQuery).Scan(&bId, &bName, &bProducer, &bModel, &bType, &bPYear, &bBDate, &bDesc, &bStatId, &bSize, &bWeight, &bIDist, &bSeries); err != nil {
 		printError.Fatalln(errNoBicycleWithID)
 	}
 
@@ -809,9 +793,9 @@ func CmdBicycleShow(c *cli.Context) error {
 	return nil
 }
 
-func CmdTripAdd(c *cli.Context) error {
+func cmdTripAdd(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags (file, title, bicycle, trip category, distance)
 	if c.String("file") == NotSetStringValue {
@@ -840,8 +824,7 @@ func CmdTripAdd(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -896,8 +879,7 @@ func CmdTripAdd(c *cli.Context) error {
 	}
 	sqlAddTrip = sqlAddTrip + fmt.Sprintf("COMMIT;")
 
-	_, err = f.Handler.Exec(sqlAddTrip)
-	if err != nil {
+	if _, err = f.Handler.Exec(sqlAddTrip); err != nil {
 		printError.Fatalln(errWritingToFile)
 	}
 
@@ -907,9 +889,9 @@ func CmdTripAdd(c *cli.Context) error {
 	return nil
 }
 
-func CmdTripList(c *cli.Context) error {
+func cmdTripList(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == "" {
@@ -918,8 +900,7 @@ func CmdTripList(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -934,8 +915,7 @@ func CmdTripList(c *cli.Context) error {
 	// Create formatting strings
 	var lId, lDate, lTitle, lCategory, lBicycle, lDistance int
 	maxQuery := fmt.Sprintf("SELECT max(length(id)), ifnull(max(length(date)),0), ifnull(max(length(title)),0), ifnull(max(length(category)),0), ifnull(max(length(bicycle)),0), ifnull(max(length(distance)),0) FROM (%s);", sqlQueryData)
-	err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lDate, &lTitle, &lCategory, &lBicycle, &lDistance)
-	if err != nil {
+	if err = f.Handler.QueryRow(maxQuery).Scan(&lId, &lDate, &lTitle, &lCategory, &lBicycle, &lDistance); err != nil {
 		printError.Fatalln("no trips")
 	}
 	if hl := utf8.RuneCountInString(bcIdHeader); lId < hl {
@@ -984,9 +964,9 @@ func CmdTripList(c *cli.Context) error {
 	return nil
 }
 
-func CmdTripEdit(c *cli.Context) error {
+func cmdTripEdit(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -999,8 +979,7 @@ func CmdTripEdit(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -1086,9 +1065,9 @@ func CmdTripEdit(c *cli.Context) error {
 	return nil
 }
 
-func CmdTripDelete(c *cli.Context) error {
+func cmdTripDelete(c *cli.Context) error {
 	// Get loggers
-	printUserMsg, printError := GetLoggers()
+	printUserMsg, printError := getLoggers()
 
 	// Check obligatory flags
 	if c.String("file") == NotSetStringValue {
@@ -1101,8 +1080,7 @@ func CmdTripDelete(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -1123,9 +1101,9 @@ func CmdTripDelete(c *cli.Context) error {
 	return nil
 }
 
-func CmdTripShow(c *cli.Context) error {
+func cmdTripShow(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -1138,8 +1116,7 @@ func CmdTripShow(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -1156,8 +1133,7 @@ func CmdTripShow(c *cli.Context) error {
 		tDistance, tSpeedMax, tDriveways, tTemp           float64
 	)
 	showQuery := fmt.Sprintf("SELECT t.id, ifnull(b.name,''), ifnull(t.date,''), ifnull(t.title,''), ifnull(c.name,''), ifnull(t.distance,0), ifnull(t.duration,''), ifnull(t.description,''), ifnull(t.hr_max,0), ifnull(t.hr_avg,0), ifnull(t.speed_max,0), ifnull(t.driveways,0), ifnull(t.calories,0), ifnull(t.temperature,0) FROM trips t LEFT JOIN trip_categories c ON t.trip_category_id=c.id LEFT JOIN bicycles b ON t.bicycle_id=b.id WHERE t.id=%d;", tID)
-	err = f.Handler.QueryRow(showQuery).Scan(&tId, &bName, &tDate, &tTitle, &tCategory, &tDistance, &tDuration, &tDesc, &tHrMax, &tHrAvg, &tSpeedMax, &tDriveways, &tCalories, &tTemp)
-	if err != nil {
+	if err := f.Handler.QueryRow(showQuery).Scan(&tId, &bName, &tDate, &tTitle, &tCategory, &tDistance, &tDuration, &tDesc, &tHrMax, &tHrAvg, &tSpeedMax, &tDriveways, &tCalories, &tTemp); err != nil {
 		printError.Fatalln(errNoTripWithID)
 	}
 

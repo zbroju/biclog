@@ -1,13 +1,14 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package src
+
+package main
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 	"github.com/zbroju/gprops"
 	"log"
 	"os"
@@ -15,8 +16,10 @@ import (
 	"strings"
 )
 
+//TODO: add report - chart of workload via gnuplot
+
 // GetConfigSettings returns contents of settings file (~/.blrc)
-func GetConfigSettings() (dataFile string, err error) {
+func getConfigSettings() (dataFile string, err error) {
 	// Read config file
 	configSettings := gprops.New()
 	configFile, err := os.Open(path.Join(os.Getenv("HOME"), ".blrc"))
@@ -33,7 +36,7 @@ func GetConfigSettings() (dataFile string, err error) {
 }
 
 // GetLoggers returns two loggers for standard formatting of messages and errors
-func GetLoggers() (messageLogger *log.Logger, errorLogger *log.Logger) {
+func getLoggers() (messageLogger *log.Logger, errorLogger *log.Logger) {
 	messageLogger = log.New(os.Stdout, fmt.Sprintf("%s: ", AppName), 0)
 	errorLogger = log.New(os.Stderr, fmt.Sprintf("%s: ", AppName), 0)
 
@@ -138,8 +141,7 @@ func typePossibleToDelete(db *sql.DB, id int) bool {
 
 	// Check how many bicycle are of that type
 	nQuery := fmt.Sprintf("SELECT count(id) FROM bicycles WHERE bicycle_type_id=%d;", id)
-	err := db.QueryRow(nQuery).Scan(&n)
-	if err != nil {
+	if err := db.QueryRow(nQuery).Scan(&n); err != nil {
 		return false
 	}
 
@@ -160,8 +162,7 @@ func categoryPossibleToDelete(db *sql.DB, id int) bool {
 
 	// Check how many trips are classified with this category
 	nQuery := fmt.Sprintf("SELECT count(id) FROM trips WHERE trip_category_id=%d;", id)
-	err := db.QueryRow(nQuery).Scan(&n)
-	if err != nil {
+	if err := db.QueryRow(nQuery).Scan(&n); err != nil {
 		return false
 	}
 
@@ -182,8 +183,7 @@ func bicyclePossibleToDelete(db *sql.DB, id int) bool {
 
 	// Check how many trips are done on this bicycle
 	nQuery := fmt.Sprintf("SELECT count(id) FROM trips WHERE bicycle_id=%d;", id)
-	err := db.QueryRow(nQuery).Scan(&n)
-	if err != nil {
+	if err := db.QueryRow(nQuery).Scan(&n); err != nil {
 		return false
 	}
 

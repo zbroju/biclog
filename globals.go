@@ -2,7 +2,37 @@
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
 
-package src
+package main
+
+// Application internal settings
+const (
+	AppName       = "biclog"
+	FSSeparator   = "  "
+	NullDataValue = "-"
+
+	NotSetIntValue    int     = -1
+	NotSetFloatValue  float64 = -1
+	NotSetStringValue         = ""
+)
+
+// Bicycle statuses
+var bicycleStatuses = map[string]int{
+	"owned":    1,
+	"sold":     2,
+	"scrapped": 3,
+	"stolen":   4,
+}
+
+// Config file settings
+const (
+	confDataFile = "DATA_FILE"
+)
+
+// DB Properties
+var dataFileProperties = map[string]string{
+	"applicationName": "gBicLog",
+	"databaseVersion": "1.0",
+}
 
 // Error messages
 const (
@@ -36,4 +66,61 @@ const (
 	errCannotRemoveBicycleType = "cannot remove bicycle type because there are bicycles of this type"
 	errCannotRemoveCategory    = "cannot remove category because there are trips with this category"
 	errCannotRemoveBicycle     = "cannot remove bicycle because there are trips done on it"
+)
+
+// Headings titles
+const (
+	btIdHeader   = "ID"
+	btNameHeader = "TYPE"
+
+	tcIdHeader   = "ID"
+	tcNameHeader = "CATEGORY"
+
+	bcIdHeader               = "ID"
+	bcNameHeader             = "BICYCLE"
+	bcProducerHeader         = "PRODUCER"
+	bcModelHeader            = "MODEL"
+	bcProductionYearHeading  = "PRODUCTION YEAR"
+	bcBuyingDateHeading      = "BUYING DATE"
+	bcDescriptionHeading     = "DESCRIPTION"
+	bcStatusHeading          = "STATUS"
+	bcSizeHeading            = "SIZE"
+	bcWeightHeading          = "WEIGHT"
+	bcInitialDistanceHeading = "INITIAL DISTANCE"
+	bcSeriesHeading          = "SERIES"
+	bcHeadingSize            = 20
+
+	trpIdHeader            = "ID"
+	trpDateHeader          = "DATE"
+	trpTitleHeader         = "TITLE"
+	trpDistanceHeader      = "DISTANCE"
+	trpDurationHeading     = "DURATION"
+	trpDescriptionHeading  = "DESCRIPTION"
+	trpHrMaxHeading        = "HR MAX"
+	trpHrAvgHeading        = "HR AVG"
+	trpSpeedMaxHeading     = "MAX SPEED"
+	trpDrivewaysHeading    = "DRIVEWAYS"
+	trpCaloriesHeading     = "CALORIES"
+	trpTemperatureHeading  = "TEMPERATURE"
+	trpSpeedAverageHeading = "AVERAGE SPEED"
+	trpHeadingSize         = 15
+)
+
+// Objects
+const (
+	objectBicycleType       = "bicycle_type"
+	objectBicycleTypeAlias  = "bt"
+	objectTripCategory      = "trip_category"
+	objectTripCategoryAlias = "tc"
+	objectBicycle           = "bicycle"
+	objectBicycleAlias      = "bc"
+	objectTrip              = "trip"
+	objectTripAlias         = "tr"
+
+	objectReportSummary      = "summary"
+	objectReportSummaryAlias = "s"
+	objectReportYearly       = "yearly"
+	objectReportYearlyAlias  = "y"
+	objectReportMonthly      = "monthly"
+	objectReportMonthlyAlias = "m"
 )

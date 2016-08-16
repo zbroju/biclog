@@ -1,20 +1,21 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-package src
+
+package main
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 	"github.com/zbroju/gsqlitehandler"
 	"os"
 	"strings"
 	"unicode/utf8"
 )
 
-func ReportSummary(c *cli.Context) error {
+func reportSummary(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -23,8 +24,7 @@ func ReportSummary(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -38,8 +38,7 @@ func ReportSummary(c *cli.Context) error {
 
 	// Create formatting strings
 	var maxLBicycle, maxLType, maxLDistance int
-	err = f.Handler.QueryRow(fmt.Sprintf("SELECT max(length(bicycle)), max(length(type)), max(length(distance)) FROM (%s);", sqlQueryData)).Scan(&maxLBicycle, &maxLType, &maxLDistance)
-	if err != nil {
+	if err = f.Handler.QueryRow(fmt.Sprintf("SELECT max(length(bicycle)), max(length(type)), max(length(distance)) FROM (%s);", sqlQueryData)).Scan(&maxLBicycle, &maxLType, &maxLDistance); err != nil {
 		printError.Fatalln("no trips")
 	}
 	if hlBicycle := utf8.RuneCountInString(bcNameHeader); maxLBicycle < hlBicycle {
@@ -82,9 +81,9 @@ func ReportSummary(c *cli.Context) error {
 	return nil
 }
 
-func ReportMonthly(c *cli.Context) error {
+func reportMonthly(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -93,8 +92,7 @@ func ReportMonthly(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -108,8 +106,7 @@ func ReportMonthly(c *cli.Context) error {
 
 	// Create formatting strings
 	var maxLMonth, maxLDistance int
-	err = f.Handler.QueryRow(fmt.Sprintf("SELECT max(length(month)), max(length(distance)) FROM (%s);", sqlQueryData)).Scan(&maxLMonth, &maxLDistance)
-	if err != nil {
+	if err = f.Handler.QueryRow(fmt.Sprintf("SELECT max(length(month)), max(length(distance)) FROM (%s);", sqlQueryData)).Scan(&maxLMonth, &maxLDistance); err != nil {
 		printError.Fatalln("no trips")
 	}
 	if hlMonth := utf8.RuneCountInString(trpDateHeader); maxLMonth < hlMonth {
@@ -148,9 +145,9 @@ func ReportMonthly(c *cli.Context) error {
 	return nil
 }
 
-func ReportYearly(c *cli.Context) error {
+func reportYearly(c *cli.Context) error {
 	// Get loggers
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Check obligatory flags (file)
 	if c.String("file") == NotSetStringValue {
@@ -159,8 +156,7 @@ func ReportYearly(c *cli.Context) error {
 
 	// Open data file
 	f := gsqlitehandler.New(c.String("file"), dataFileProperties)
-	err := f.Open()
-	if err != nil {
+	if err := f.Open(); err != nil {
 		printError.Fatalln(err)
 	}
 	defer f.Close()
@@ -174,8 +170,7 @@ func ReportYearly(c *cli.Context) error {
 
 	// Create formatting strings
 	var maxYear, maxLDistance int
-	err = f.Handler.QueryRow(fmt.Sprintf("SELECT max(length(year)), max(length(distance)) FROM (%s);", sqlQueryData)).Scan(&maxYear, &maxLDistance)
-	if err != nil {
+	if err = f.Handler.QueryRow(fmt.Sprintf("SELECT max(length(year)), max(length(distance)) FROM (%s);", sqlQueryData)).Scan(&maxYear, &maxLDistance); err != nil {
 		printError.Fatalln("no trips")
 	}
 	if hlYear := utf8.RuneCountInString(trpDateHeader); maxYear < hlYear {
@@ -213,5 +208,3 @@ func ReportYearly(c *cli.Context) error {
 
 	return nil
 }
-
-//TODO: add report - chart of workload via gnuplot

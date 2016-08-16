@@ -1,68 +1,20 @@
 // Written 2016 by Marcin 'Zbroju' Zbroinski.
 // Use of this source code is governed by a GNU General Public License
 // that can be found in the LICENSE file.
-//
-//TASKS:
-//DONE: change communication to 'log' library
-//DONE: create scheme of DB
-//DONE: config - data file name
-//DONE: command - init data file
-//DONE: checking if given file is a appropriate biclog file
-//DONE: command - type add
-//DONE: command - type list
-//DONE: command - type edit
-//DONE: command - type delete
-//DONE: command - category add
-//DONE: command - category list
-//DONE: command - category edit
-//DONE: command - category delete
-//DONE: command - bicycle add
-//DONE: command - bicycle list
-//DONE: command - bicycle edit (remember about changing status to scrapped, sold and stolen)
-//DONE: command - bicycle delete
-//DONE: command - bicycle show details
-//DONE: command - trip add
-//DONE: command - trip list
-//DONE: command - trip edit
-//DONE: command - trip delete
-//DONE: command - trip show details
-//DONE: command - report summary
-//DONE: command - report history
-//DONE: fix issue so that searching by bicycle name, trip category, bicycle type is irrespective of capitals
-//DONE: move all function except for main() to /lib folder
+
 package main
 
 import (
-	"github.com/codegangsta/cli"
-	. "github.com/zbroju/biclog/src"
+	"github.com/urfave/cli"
 	"os"
-)
-
-// Objects
-const (
-	objectBicycleType       = "bicycle_type"
-	objectBicycleTypeAlias  = "bt"
-	objectTripCategory      = "trip_category"
-	objectTripCategoryAlias = "tc"
-	objectBicycle           = "bicycle"
-	objectBicycleAlias      = "bc"
-	objectTrip              = "trip"
-	objectTripAlias         = "tr"
-
-	objectReportSummary      = "summary"
-	objectReportSummaryAlias = "s"
-	objectReportYearly       = "yearly"
-	objectReportYearlyAlias  = "y"
-	objectReportMonthly      = "monthly"
-	objectReportMonthlyAlias = "m"
 )
 
 func main() {
 	// Get error logger
-	_, printError := GetLoggers()
+	_, printError := getLoggers()
 
 	// Get config settings
-	dataFile, err := GetConfigSettings()
+	dataFile, err := getConfigSettings()
 	if err != nil {
 		printError.Fatalln(err)
 	}
@@ -124,124 +76,124 @@ SUBCOMMANDS:
 			Aliases: []string{"I"},
 			Flags:   []cli.Flag{flagFile},
 			Usage:   "Init a new data file specified by the user",
-			Action:  CmdInit},
+			Action:  cmdInit},
 		{Name: "add", Aliases: []string{"A"}, Usage: "Add an object (bicycle, bicycle type, trip, trip category).",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagFile, flagType},
 					Usage:   "Add new bicycle type.",
-					Action:  CmdTypeAdd},
+					Action:  cmdTypeAdd},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagFile, flagCategory},
 					Usage:   "Add new trip category.",
-					Action:  CmdCategoryAdd},
+					Action:  cmdCategoryAdd},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Add new bicycle.",
-					Action:  CmdBicycleAdd},
+					Action:  cmdBicycleAdd},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
 					Flags:   []cli.Flag{flagFile, flagTitle, flagBicycle, flagDate, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
 					Usage:   "Add new trip.",
-					Action:  CmdTripAdd}}},
+					Action:  cmdTripAdd}}},
 		{Name: "list", Aliases: []string{"L"}, Usage: "List objects (bicycles, bicycle types, trips, trips categories)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagFile},
 					Usage:   "List available bicycle types.",
-					Action:  CmdTypeList},
+					Action:  cmdTypeList},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagFile},
 					Usage:   "List available trip categories.",
-					Action:  CmdCategoryList},
+					Action:  cmdCategoryList},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagFile, flagBicycle, flagManufacturer, flagModel, flagType, flagAll},
 					Usage:   "List available bicycles.",
-					Action:  CmdBicycleList},
+					Action:  cmdBicycleList},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
 					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "List available trips.",
-					Action:  CmdTripList}}},
+					Action:  cmdTripList}}},
 		{Name: "edit", Aliases: []string{"E"}, Usage: "Edit an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagFile, flagId, flagType},
 					Usage:   "Edit bicycle type with given id.",
-					Action:  CmdTypeEdit},
+					Action:  cmdTypeEdit},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagFile, flagId, flagCategory},
 					Usage:   "Edit trip category with given id.",
-					Action:  CmdCategoryEdit},
+					Action:  cmdCategoryEdit},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagFile, flagId, flagBicycle, flagManufacturer, flagModel, flagType, flagProductionYear, flagBuyingDate, flagDescription, flagStatus, flagSize, flagWeight, flagInitialDistance, flagSeries},
 					Usage:   "Edit bicycle details.",
-					Action:  CmdBicycleEdit},
+					Action:  cmdBicycleEdit},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
 					Flags:   []cli.Flag{flagFile, flagId, flagBicycle, flagDate, flagTitle, flagCategory, flagDistance, flagDuration, flagDescription, flagHRMax, flagHRAvg, flagSpeedMax, flagDriveways, flagCalories, flagTemperature},
 					Usage:   "Edit trip details.",
-					Action:  CmdTripEdit}}},
+					Action:  cmdTripEdit}}},
 		{Name: "delete", Aliases: []string{"D"}, Usage: "Delete an object (bicycle, bicycle type, trip, trip category)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycleType,
 					Aliases: []string{objectBicycleTypeAlias},
 					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete bicycle type with given id.",
-					Action:  CmdTypeDelete},
+					Action:  cmdTypeDelete},
 				{Name: objectTripCategory,
 					Aliases: []string{objectTripCategoryAlias},
 					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete trip category with given id.",
-					Action:  CmdCategoryDelete},
+					Action:  cmdCategoryDelete},
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete bicycle with given id.",
-					Action:  CmdBicycleDelete},
+					Action:  cmdBicycleDelete},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
 					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Delete trip with given id.",
-					Action:  CmdTripDelete}}},
+					Action:  cmdTripDelete}}},
 		{Name: "show", Aliases: []string{"S"}, Usage: "Show details of an object (bicycle, trip)",
 			Subcommands: []cli.Command{
 				{Name: objectBicycle,
 					Aliases: []string{objectBicycleAlias},
 					Flags:   []cli.Flag{flagFile, flagId, flagBicycle},
 					Usage:   "Shows details of bicycle with given id or bicycle.",
-					Action:  CmdBicycleShow},
+					Action:  cmdBicycleShow},
 				{Name: objectTrip,
 					Aliases: []string{objectTripAlias},
 					Flags:   []cli.Flag{flagFile, flagId},
 					Usage:   "Shows details of trip with given id.",
-					Action:  CmdTripShow}}},
+					Action:  cmdTripShow}}},
 		{Name: "report", Aliases: []string{"R"}, Usage: "Show report",
 			Subcommands: []cli.Command{
 				{Name: objectReportSummary,
 					Aliases: []string{objectReportSummaryAlias},
 					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "Shows summary of distance per bicycle.",
-					Action:  ReportSummary},
+					Action:  reportSummary},
 				{Name: objectReportMonthly,
 					Aliases: []string{objectReportMonthlyAlias},
 					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "Shows summary of distance per month.",
-					Action:  ReportMonthly},
+					Action:  reportMonthly},
 				{Name: objectReportYearly,
 					Aliases: []string{objectReportYearlyAlias},
 					Flags:   []cli.Flag{flagFile, flagType, flagCategory, flagBicycle, flagDate},
 					Usage:   "Shows summary of distance per year.",
-					Action:  ReportYearly},
+					Action:  reportYearly},
 			}}}
 	app.Run(os.Args)
 }
